@@ -27,4 +27,9 @@ export const mentors: Mentor[] = [
     image: "/mentors/mohamed-isa.png",
     profileUrl: "https://www.linkedin.com/in/mohdisa/",
   },
+  {
+    name: "Ameera Hashem",
+    role: "Founder of Arima Journey|The Mindful Business Owner: Leading with Clarity & Calm" ,
+    image: "/mentors/ameera-hashem.jpeg",
+  },
 ];

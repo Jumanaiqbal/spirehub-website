@@ -7,6 +7,7 @@ import {
   listOdooRooms,
   testOdooConnection,
 } from "./odoo/rooms";
+import { createOdooLead } from "./odoo/leads";
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -140,40 +141,43 @@ export async function handleOdooApi(
     }
 
     if (path === "/api/contact" && req.method === "POST") {
+      let body: {
+        fullName?: string;
+        email?: string;
+        interest?: string;
+        phone?: string;
+        comments?: string;
+      };
       try {
-        const body = JSON.parse(await readBody(req));
-        const { fullName, email, interest, phone, comments } = body;
-
-        // Validate required fields
-        if (!fullName || !email || !interest || !phone) {
-          sendJson(res, 400, {
-            error: "fullName, email, interest, and phone are required",
-          });
-          return true;
-        }
-
-        // Log to console (for now)
-        console.log(
-          "\n=== NEW CONTACT FORM SUBMISSION ===",
-          new Date().toISOString()
-        );
-        console.log(`Name: ${fullName}`);
-        console.log(`Email: ${email}`);
-        console.log(`Interest: ${interest}`);
-        console.log(`Phone: ${phone}`);
-        console.log(`Comments: ${comments || "(none)"}`);
-        console.log("===================================\n");
-
-        // Return success response
-        sendJson(res, 200, {
-          success: true,
-          message: "Contact form submitted successfully",
-        });
-        return true;
-      } catch (parseError) {
+        body = JSON.parse(await readBody(req));
+      } catch {
         sendJson(res, 400, { error: "Invalid JSON in request body" });
         return true;
       }
+
+      const { fullName, email, interest, phone, comments } = body;
+
+      if (!fullName || !email || !interest || !phone) {
+        sendJson(res, 400, {
+          error: "fullName, email, interest, and phone are required",
+        });
+        return true;
+      }
+
+      const lead = await createOdooLead(odoo, {
+        fullName,
+        email,
+        phone,
+        interest,
+        comments,
+      });
+
+      sendJson(res, 200, {
+        success: true,
+        message: "Thank you! We'll be in touch soon.",
+        leadId: lead.id,
+      });
+      return true;
     }
 
     sendJson(res, 404, { error: "Not found" });

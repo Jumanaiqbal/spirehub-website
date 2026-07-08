@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Plane, Rocket, BarChart3, Check, Building } from "lucide-react";
 import Button from "../ui/Button";
-import { SectionTag, ArrowLink } from "../ui/SectionTag";
+import { SectionTag } from "../ui/SectionTag";
 import { membershipPlans } from "../../data/content";
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -39,9 +39,6 @@ export default function Membership() {
             From first idea to scaling globally — choose the membership that
             fits where you are today.
           </p>
-          <div className="mt-4">
-            <ArrowLink href="#">Compare plans</ArrowLink>
-          </div>
         </motion.div>
 
         {/* Toggles */}
