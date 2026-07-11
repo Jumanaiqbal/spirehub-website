@@ -8,20 +8,33 @@ import {
   CheckCircle2,
   Loader2,
   ArrowLeft,
+  CreditCard,
 } from "lucide-react";
 import { meetingRooms as fallbackRooms, durationOptions } from "../../data/meetingRooms";
 import type { MeetingRoom } from "../../data/meetingRooms";
 import { formatLocalDate } from "../../utils/dates";
+import FittedImage from "../ui/FittedImage";
 import {
   checkAllRoomAvailability,
   getMeetingRooms,
   submitBooking,
   type BookingResult,
 } from "../../services/booking";
+import {
+  createCheckout,
+  verifyPayment,
+  type PendingBooking,
+} from "../../services/payments";
 import { paymentDetails, hasPaymentDetails } from "../../config/paymentDetails";
 import { formatBhd, getBookingSummary } from "../../utils/pricing";
 
-type Step = "rooms" | "details" | "success";
+type Step = "rooms" | "details" | "payment" | "success";
+
+const PENDING_BOOKING_KEY = "spireHub_pendingCardBooking";
+
+function getShopperResultUrl(): string {
+  return `${window.location.origin}${window.location.pathname}?afsPayment=1`;
+}
 
 interface BookingModalProps {
 
@@ -59,7 +72,15 @@ export default function BookingModal({
   const [rooms, setRooms] = useState<MeetingRoom[]>(fallbackRooms);
   const [roomsReady, setRoomsReady] = useState(false);
   const [workshopLayout, setWorkshopLayout] = useState("");
+  const [payingOnline, setPayingOnline] = useState(false);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  const [afsBaseUrl, setAfsBaseUrl] = useState<string | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const skipAutoRefresh = useRef(true);
+  const resumingPayment = useRef(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("afsPayment") === "1"
+  );
 
   const selectedRoom = useMemo(
     () => rooms.find((r) => r.id === selectedRoomId),
@@ -126,6 +147,8 @@ export default function BookingModal({
       return;
     }
 
+    if (resumingPayment.current) return;
+
     let cancelled = false;
 
     async function init() {
@@ -156,6 +179,65 @@ export default function BookingModal({
     };
   }, [open, initialDate, initialTime, preselectedRoomId]);
 
+  // Resume a card payment after AFS redirects back to this page.
+  useEffect(() => {
+    if (!resumingPayment.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const resourcePath = params.get("resourcePath");
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const pendingRaw = sessionStorage.getItem(PENDING_BOOKING_KEY);
+    sessionStorage.removeItem(PENDING_BOOKING_KEY);
+
+    if (!resourcePath || !pendingRaw) {
+      resumingPayment.current = false;
+      if (resourcePath && !pendingRaw) {
+        setSubmitError(
+          "We received your payment redirect but your booking details were lost. " +
+            "If your card was charged, please contact the Spire team — do not pay again."
+        );
+      }
+      return;
+    }
+
+    const pending = JSON.parse(pendingRaw) as PendingBooking;
+    setStep("payment");
+    setVerifyingPayment(true);
+
+    verifyPayment(resourcePath, pending)
+      .then((verifyResult) => {
+        if (verifyResult.success && verifyResult.booking) {
+          setResult({
+            reference: verifyResult.booking.name,
+            room: pending.room,
+            date: pending.date,
+            time: pending.time,
+            duration: pending.duration,
+            totalBhd: pending.totalBhd,
+            layout: pending.layout,
+            paymentStatus: "paid",
+          });
+          setStep("success");
+        } else {
+          setSubmitError(
+            verifyResult.message ?? "Payment could not be confirmed. Please try again."
+          );
+          setStep("rooms");
+        }
+      })
+      .catch((error) => {
+        setSubmitError(
+          error instanceof Error ? error.message : "Could not verify payment."
+        );
+        setStep("rooms");
+      })
+      .finally(() => {
+        setVerifyingPayment(false);
+        resumingPayment.current = false;
+      });
+  }, []);
+
   useEffect(() => {
     if (!open || !roomsReady || step !== "rooms") return;
 
@@ -171,16 +253,37 @@ export default function BookingModal({
     return () => window.clearTimeout(timer);
   }, [date, time, duration, open, roomsReady, rooms, step]);
 
+  // Load the AFS Copy&Pay widget script once we have a checkout session.
+  useEffect(() => {
+    if (step !== "payment" || !checkoutId || !afsBaseUrl) return;
+
+    (window as unknown as Record<string, unknown>).wpwlOptions = {
+      style: "card",
+      brandDetection: true,
+      locale: "en",
+    };
+
+    const script = document.createElement("script");
+    script.src = `${afsBaseUrl}/v1/paymentWidgets.js?checkoutId=${checkoutId}`;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+      delete (window as unknown as Record<string, unknown>).wpwlOptions;
+    };
+  }, [step, checkoutId, afsBaseUrl]);
+
   const resetAndClose = () => {
     setStep("rooms");
     setSelectedRoomId(null);
     setResult(null);
     setAvailability({});
+    setCheckoutId(null);
+    setAfsBaseUrl(null);
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleReserveBankTransfer = async () => {
     if (!selectedRoom) return;
 
     setLoading(true);
@@ -215,6 +318,43 @@ export default function BookingModal({
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePayOnline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRoom || !bookingSummary) return;
+
+    setPayingOnline(true);
+    setSubmitError(null);
+
+    try {
+      const pending: PendingBooking = {
+        room: selectedRoom,
+        date,
+        time,
+        duration,
+        layout: selectedLayout?.label,
+        totalBhd: bookingSummary.total,
+        ...form,
+      };
+      sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(pending));
+
+      const checkout = await createCheckout({
+        roomId: selectedRoom.id,
+        durationMinutes: duration,
+      });
+
+      setCheckoutId(checkout.checkoutId);
+      setAfsBaseUrl(checkout.baseUrl);
+      setStep("payment");
+    } catch (error) {
+      sessionStorage.removeItem(PENDING_BOOKING_KEY);
+      setSubmitError(
+        error instanceof Error ? error.message : "Could not start payment. Please try again."
+      );
+    } finally {
+      setPayingOnline(false);
     }
   };
 
@@ -351,10 +491,10 @@ export default function BookingModal({
                               : "cursor-not-allowed border-gray-100 opacity-50"
                           }`}
                         >
-                          <img
+                          <FittedImage
                             src={room.image}
                             alt={room.name}
-                            className="h-16 w-20 shrink-0 rounded-lg object-cover"
+                            className="h-16 w-20 shrink-0 rounded-lg"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
@@ -462,6 +602,13 @@ export default function BookingModal({
                             onChange={() => setWorkshopLayout(layout.id)}
                             className="mt-1"
                           />
+                          {layout.image && (
+                            <FittedImage
+                              src={layout.image}
+                              alt={layout.label}
+                              className="h-14 w-20 shrink-0 rounded-lg"
+                            />
+                          )}
                           <div>
                             <p className="text-sm font-semibold text-spire-navy">
                               {layout.label}
@@ -476,7 +623,7 @@ export default function BookingModal({
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handlePayOnline} className="space-y-4">
                   {submitError && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
                       {submitError}
@@ -539,19 +686,102 @@ export default function BookingModal({
 
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={payingOnline || loading}
                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
+                  >
+                    {payingOnline ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Preparing payment…
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        Pay {formatBhd(bookingSummary?.total ?? 0)} online now
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={loading || payingOnline}
+                    onClick={handleReserveBankTransfer}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-spire-gray transition-colors hover:border-spire-blue hover:text-spire-navy disabled:opacity-70"
                   >
                     {loading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Submitting…
+                        Reserving…
                       </>
                     ) : (
-                      `Request booking · ${formatBhd(bookingSummary?.total ?? 0)}`
+                      "Reserve now, pay later by bank transfer"
                     )}
                   </button>
                 </form>
+              </motion.div>
+            )}
+
+            {step === "payment" && (
+              <motion.div
+                key="payment"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                {verifyingPayment ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center text-spire-gray">
+                    <Loader2 className="mb-3 h-6 w-6 animate-spin" />
+                    Verifying your payment…
+                  </div>
+                ) : checkoutId ? (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCheckoutId(null);
+                        setAfsBaseUrl(null);
+                        setStep("details");
+                      }}
+                      className="mb-4 flex items-center gap-1 text-sm text-spire-blue hover:text-spire-navy"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </button>
+
+                    {selectedRoom && bookingSummary && (
+                      <div className="mb-5 flex items-center justify-between rounded-xl bg-spire-light px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-spire-navy">
+                            {selectedRoom.name}
+                          </p>
+                          <p className="text-xs text-spire-gray">
+                            {formatLocalDate(date, { day: "numeric", month: "short" })} · {time} ·{" "}
+                            {durationOptions.find((d) => d.value === duration)?.label}
+                          </p>
+                        </div>
+                        <p className="text-lg font-bold text-spire-navy">
+                          {formatBhd(bookingSummary.total)}
+                        </p>
+                      </div>
+                    )}
+
+                    <form
+                      action={getShopperResultUrl()}
+                      className="paymentWidgets"
+                      data-brands="VISA MASTER"
+                    ></form>
+
+                    <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-[11px] text-spire-gray">
+                      <CreditCard className="h-3.5 w-3.5" />
+                      Secure payment powered by AFS — card details never touch our servers.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-16 text-spire-gray">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Preparing payment…
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -562,14 +792,30 @@ export default function BookingModal({
                 animate={{ opacity: 1, scale: 1 }}
                 className="py-4 text-center"
               >
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
-                  <CheckCircle2 className="h-8 w-8 text-amber-600" />
+                <div
+                  className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${
+                    result.paymentStatus === "paid" ? "bg-green-100" : "bg-amber-100"
+                  }`}
+                >
+                  <CheckCircle2
+                    className={`h-8 w-8 ${
+                      result.paymentStatus === "paid" ? "text-green-600" : "text-amber-600"
+                    }`}
+                  />
                 </div>
-                <h4 className="mt-4 text-xl font-bold text-spire-navy">Booking requested</h4>
+                <h4 className="mt-4 text-xl font-bold text-spire-navy">
+                  {result.paymentStatus === "paid" ? "Payment successful" : "Booking requested"}
+                </h4>
                 <p className="mt-2 text-sm text-spire-gray">
-                  Your request is in our system as{" "}
-                  <span className="font-semibold text-amber-700">not paid</span>. The Spire
-                  team will contact you to arrange payment and confirm your room.
+                  {result.paymentStatus === "paid" ? (
+                    <>Your room is confirmed and paid in full. See you soon!</>
+                  ) : (
+                    <>
+                      Your request is in our system as{" "}
+                      <span className="font-semibold text-amber-700">not paid</span>. The Spire
+                      team will contact you to arrange payment and confirm your room.
+                    </>
+                  )}
                 </p>
 
                 <div className="mt-6 rounded-xl bg-spire-light p-4 text-left text-sm">
@@ -600,7 +846,9 @@ export default function BookingModal({
                       <span className="font-medium text-spire-navy">Time:</span> {result.time}
                     </p>
                     <p>
-                      <span className="font-medium text-spire-navy">Amount due:</span>{" "}
+                      <span className="font-medium text-spire-navy">
+                        {result.paymentStatus === "paid" ? "Amount paid:" : "Amount due:"}
+                      </span>{" "}
                       <span className="font-bold text-spire-navy">
                         {formatBhd(result.totalBhd)}
                       </span>
@@ -609,7 +857,7 @@ export default function BookingModal({
                   </div>
                 </div>
 
-                {hasPaymentDetails() ? (
+                {result.paymentStatus !== "paid" && hasPaymentDetails() ? (
                   <div className="mt-4 rounded-xl border border-spire-navy/15 bg-white p-4 text-left text-sm">
                     <p className="font-semibold text-spire-navy">Bank transfer details</p>
                     <p className="mt-2 text-xs text-spire-gray">
@@ -645,17 +893,12 @@ export default function BookingModal({
                       </div>
                     </dl>
                   </div>
-                ) : (
+                ) : result.paymentStatus !== "paid" ? (
                   <p className="mt-4 text-xs text-amber-800">
                     Payment details will be sent to your email. Our team will confirm once payment
                     is received.
                   </p>
-                )}
-
-                <p className="mt-4 text-xs text-spire-gray">
-                  You can also pay by bank transfer using the details below. Our team will
-                  confirm once payment is received.
-                </p>
+                ) : null}
 
                 <button
                   type="button"

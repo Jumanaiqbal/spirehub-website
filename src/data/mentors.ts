@@ -10,16 +10,19 @@ export const mentors: Mentor[] = [
     name: "Ahmed Al Tattan",
     role: "Founder and Creative Director at Brandin' You",
     image: "/mentors/ahmed-al-tattan.png",
+    profileUrl: "https://www.linkedin.com/in/altattanahmed/",
   },
   {
     name: "Husain Al Hesabi",
     role: "Founder of Beyond Business Consultancy",
     image: "/mentors/husain-al-hesabi.png",
+    profileUrl: "https://www.linkedin.com/in/hussain-al-hesabi/",
   },
   {
     name: "Hamed Al Mahari",
     role: "Growth & Communication Expert — Driving Strategic Digital Success",
     image: "/mentors/hamad-al-mahari.png",
+    profileUrl: "https://www.linkedin.com/in/hamedalmahari/",
   },
   {
     name: "Mohamed Isa",
@@ -31,5 +34,12 @@ export const mentors: Mentor[] = [
     name: "Ameera Hashem",
     role: "Founder of Arima Journey|The Mindful Business Owner: Leading with Clarity & Calm" ,
     image: "/mentors/ameera-hashem.jpeg",
+    profileUrl: "https://www.instagram.com/arima_journey?",
+  },
+  {
+    name: "Sayed Ebrahim",
+    role: "Head of Innovation & Space Experience at Spire Hub",
+    image: "/mentors/sayed-ebrahim.jpeg",
+    profileUrl: "https://www.linkedin.com/in/sayed-ebrahim-mahfoodh-bb093433/",
   },
 ];

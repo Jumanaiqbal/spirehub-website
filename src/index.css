@@ -19,3 +19,64 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* AFS Copy&Pay widget — match Spire branding */
+.wpwl-form {
+  max-width: 100%;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  font-family: var(--font-sans);
+}
+
+.wpwl-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-spire-gray);
+}
+
+.wpwl-control {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  box-shadow: none;
+  height: 42px;
+}
+
+/* Card number & CVV are secure iframes — cap their height explicitly,
+   otherwise they expand to the iframe's large default size. */
+iframe.wpwl-control,
+.wpwl-control-iframe {
+  height: 42px !important;
+  padding: 0;
+}
+
+.wpwl-control:focus {
+  border-color: var(--color-spire-blue);
+  box-shadow: none;
+}
+
+.wpwl-button-pay {
+  width: 100%;
+  background-color: var(--color-spire-navy);
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  transition: background-color 0.15s ease;
+}
+
+.wpwl-button-pay:hover,
+.wpwl-button-pay:focus,
+.wpwl-button-pay:active {
+  background-color: var(--color-spire-navy-dark);
+  border: none;
+}
+
+.wpwl-group {
+  margin-bottom: 0.75rem;
+}

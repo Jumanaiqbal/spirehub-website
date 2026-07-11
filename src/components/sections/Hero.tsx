@@ -55,7 +55,7 @@ export default function Hero({ onOpenJoinForm }: HeroProps) {
             animate="visible"
             className="mt-8 flex flex-wrap gap-4"
           >
-            <Button onClick={onOpenJoinForm}>Join Spire Hub</Button>
+            <Button onClick={onOpenJoinForm}>Enquire Now</Button>
             <Button variant="secondary" showArrow={false} onClick={() => document.getElementById("meeting-rooms")?.scrollIntoView({ behavior: "smooth" })}>
               <Calendar className="h-4 w-4" />
               Book a Meeting Room

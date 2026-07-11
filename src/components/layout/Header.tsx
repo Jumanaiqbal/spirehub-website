@@ -35,7 +35,7 @@ export default function Header({ onOpenJoinForm }: HeaderProps) {
         </nav>
 
         <div className="hidden items-center gap-4 lg:flex">
-          <Button showArrow onClick={onOpenJoinForm}>Join Spire Hub</Button>
+          <Button showArrow onClick={onOpenJoinForm}>Enquire Now</Button>
         </div>
 
         <button
@@ -68,7 +68,7 @@ export default function Header({ onOpenJoinForm }: HeaderProps) {
               ))}
               <div className="mt-3 border-t border-gray-100 pt-3">
                 <Button className="w-full" onClick={onOpenJoinForm}>
-                  Join Spire Hub
+                  Enquire Now
                 </Button>
               </div>
             </nav>

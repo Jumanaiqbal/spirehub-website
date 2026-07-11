@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(npm install *)",
+      "Bash(curl -s -X POST http://localhost:5173/api/events/register -H 'Content-Type: application/json' -d '{\"eventId\":7,\"name\":\"Test Ticket \\(delete me\\)\",\"email\":\"test2@example.com\",\"phone\":\"+973 0000 0001\"}')",
+      "Bash(curl -s http://localhost:9336/json/list)",
+      "Bash(pkill -f \"remote-debugging-port=9336\")",
+      "Bash(pkill -f \"remote-debugging-port=9337\")",
+      "WebFetch(domain:afs.docs.oppwa.com)",
+      "Bash(curl -s -X POST http://localhost:5173/api/payments/checkout -H 'Content-Type: application/json' -d '{\"roomId\":1,\"durationMinutes\":60,\"returnUrl\":\"http://localhost:5173/\"}')",
+      "Bash(curl -s -o /dev/null -w \"status: %{http_code}, content-type: %{content_type}\\\\n\" \"https://eu-test.oppwa.com/v1/paymentWidgets.js?checkoutId=E740BFCFFD3AFE91B3EEF0BFAF8D5FE4.uat01-vm-tx04\")",
+      "Bash(curl -s http://localhost:9338/json/list)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(curl -s -X POST http://localhost:5173/api/payments/checkout -H 'Content-Type: application/json' -d '{\"roomId\":1,\"durationMinutes\":60}')",
+      "Bash(curl -s -X POST http://localhost:5173/api/bookings -H 'Content-Type: application/json' -d '{\"roomId\":1,\"date\":\"2026-07-22\",\"time\":\"14:00\",\"duration\":60,\"name\":\"Debug Path Test \\(delete me\\)\",\"email\":\"debug@example.com\",\"phone\":\"+973 0000 0004\"}')",
+      "Bash(node -e 'let d=\"\";process.stdin.on\\(\"data\",c=>d+=c\\).on\\(\"end\",\\(\\)=>{try{const list=JSON.parse\\(d\\);const page=list.find\\(t=>t.type===\"page\"\\);console.log\\(page?page.webSocketDebuggerUrl:\"NO_PAGE\"\\)}catch\\(e\\){console.log\\(\"NO_CHROME\"\\)}}\\)')"
+    ]
+  }
+}

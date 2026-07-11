@@ -106,7 +106,7 @@ export interface BookingResult {
   duration: number;
   totalBhd: number;
   layout?: string;
-  paymentStatus: "not_paid";
+  paymentStatus: "not_paid" | "paid";
 }
 
 export async function submitBookingToApi(

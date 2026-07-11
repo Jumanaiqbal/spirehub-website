@@ -8,6 +8,10 @@ import {
   testOdooConnection,
 } from "./odoo/rooms";
 import { createOdooLead } from "./odoo/leads";
+import { listUpcomingOdooEvents, registerForOdooEvent } from "./odoo/events";
+import { createAfsCheckout, getAfsEnv, isAfsConfigured, verifyAfsPayment } from "./afs/client";
+import { findRoomPricing } from "../src/data/roomPricing";
+import { calculateBookingTotal } from "../src/utils/pricing";
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -57,6 +61,53 @@ export async function handleOdooApi(
     if (path === "/api/rooms" && req.method === "GET") {
       const rooms = await listOdooRooms(odoo);
       sendJson(res, 200, { rooms });
+      return true;
+    }
+
+    if (path === "/api/events" && req.method === "GET") {
+      const events = await listUpcomingOdooEvents(odoo);
+      sendJson(res, 200, { events });
+      return true;
+    }
+
+    if (path === "/api/events/register" && req.method === "POST") {
+      let body: {
+        eventId?: number;
+        name?: string;
+        email?: string;
+        phone?: string;
+        company?: string;
+      };
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        sendJson(res, 400, { error: "Invalid JSON in request body" });
+        return true;
+      }
+
+      const { eventId, name, email, phone, company } = body;
+
+      if (!eventId || !name || !email || !phone) {
+        sendJson(res, 400, {
+          error: "eventId, name, email, and phone are required",
+        });
+        return true;
+      }
+
+      const registration = await registerForOdooEvent(odoo, {
+        eventId: Number(eventId),
+        name,
+        email,
+        phone,
+        company,
+      });
+
+      sendJson(res, 201, {
+        success: true,
+        message: "You're registered!",
+        registrationId: registration.id,
+        barcode: registration.barcode,
+      });
       return true;
     }
 
@@ -118,6 +169,93 @@ export async function handleOdooApi(
         duration
       );
       sendJson(res, 200, { available, roomId, date, time, duration });
+      return true;
+    }
+
+    if (path === "/api/payments/checkout" && req.method === "POST") {
+      if (!isAfsConfigured(env)) {
+        sendJson(res, 503, { error: "Payment gateway is not configured." });
+        return true;
+      }
+
+      const body = JSON.parse(await readBody(req));
+      const roomId = Number(body.roomId);
+      const durationMinutes = Number(body.durationMinutes ?? 60);
+
+      if (!roomId) {
+        sendJson(res, 400, { error: "roomId is required" });
+        return true;
+      }
+
+      const pricing = findRoomPricing(roomId);
+      const hourlyRate = pricing?.hourlyRate ?? 5.5;
+      const amount = calculateBookingTotal(hourlyRate, durationMinutes);
+      const merchantTransactionId = `SH${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+      const afs = getAfsEnv(env);
+      const checkout = await createAfsCheckout(afs, {
+        amount: amount.toFixed(2),
+        merchantTransactionId,
+      });
+
+      sendJson(res, 200, {
+        checkoutId: checkout.checkoutId,
+        merchantTransactionId,
+        amount,
+        baseUrl: afs.baseUrl,
+      });
+      return true;
+    }
+
+    if (path === "/api/payments/verify" && req.method === "POST") {
+      if (!isAfsConfigured(env)) {
+        sendJson(res, 503, { error: "Payment gateway is not configured." });
+        return true;
+      }
+
+      const body = JSON.parse(await readBody(req));
+      const resourcePath = String(body.resourcePath ?? "");
+
+      if (!resourcePath) {
+        sendJson(res, 400, { error: "resourcePath is required" });
+        return true;
+      }
+
+      const afs = getAfsEnv(env);
+      const result = await verifyAfsPayment(afs, resourcePath);
+
+      if (!result.success) {
+        sendJson(res, 200, {
+          success: false,
+          pending: result.pending,
+          message: `${result.description} (code ${result.code})`,
+        });
+        return true;
+      }
+
+      const roomId = Number(body.roomId);
+      const durationMinutes = Number(body.duration ?? 60);
+      const pricing = findRoomPricing(roomId);
+      const hourlyRate = pricing?.hourlyRate ?? 5.5;
+      const amount = calculateBookingTotal(hourlyRate, durationMinutes);
+
+      const booking = await createOdooBooking(odoo, {
+        roomId,
+        date: body.date,
+        time: body.time,
+        durationMinutes,
+        name: body.name,
+        email: body.email,
+        phone: body.phone,
+        company: body.company,
+        notes: body.notes,
+        layout: body.layout,
+        amountBhd: amount,
+        paid: true,
+        paymentReference: result.merchantTransactionId,
+      });
+
+      sendJson(res, 201, { success: true, booking });
       return true;
     }
 

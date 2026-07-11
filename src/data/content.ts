@@ -3,13 +3,19 @@ export const navLinks = [
   { label: "Mentors", href: "#mentors" },
   { label: "Membership", href: "#membership" },
   { label: "Meeting Rooms", href: "#meeting-rooms" },
-  { label: "Blog", href: "#" },
 ];
 
-export const stats = [
-  { value: 120, suffix: "+", label: "Startups Supported" },
-  { value: 35, suffix: "+", label: "Industry Mentors" },
-  { value: 2, prefix: "$", suffix: "M+", label: "Funding Raised" },
+interface Stat {
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  label: string;
+}
+
+export const stats: Stat[] = [
+  { value: 300, suffix: "+", label: "Startups Supported" },
+  { value: 10, suffix: "+", label: "Industry Mentors" },
+  { value: 5000, suffix: "+", label: "Event Attendees" },
   { value: 500, suffix: "+", label: "Events Hosted" },
 ];
 
@@ -52,7 +58,7 @@ export const membershipPlans = {
         "50% discount on workshop room",
         "0% VAT — no extra or hidden charges",
       ],
-      popular: false,
+      popular: true,
     },
     {
       name: "Base",
@@ -100,7 +106,7 @@ export const membershipPlans = {
         "50% discount on workshop room",
         "0% VAT — no extra or hidden charges",
       ],
-      popular: true,
+      popular: false,
     },
   ],
   plus: [
@@ -119,7 +125,7 @@ export const membershipPlans = {
         "50% discount on workshop room",
         "0% VAT — no extra or hidden charges",
       ],
-      popular: false,
+      popular: true,
     },
     {
       name: "Base+",
@@ -170,53 +176,29 @@ export const membershipPlans = {
         "50% discount on workshop room",
         "0% VAT — no extra or hidden charges",
       ],
-      popular: true,
+      popular: false,
     },
   ],
 };
 
-export const events = [
-  {
-    title: "Founder Talks",
-    date: "JUN 12",
-    time: "6:00 PM – 8:00 PM",
-    image:
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop",
-  },
-  {
-    title: "Investor Meetup",
-    date: "JUN 18",
-    time: "5:30 PM – 7:30 PM",
-    image:
-      "https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&h=400&fit=crop",
-  },
-  {
-    title: "Product Workshop",
-    date: "JUN 25",
-    time: "10:00 AM – 1:00 PM",
-    image:
-      "https://images.unsplash.com/photo-1552664730-d307ca884978?w=600&h=400&fit=crop",
-  },
-];
-
 export const testimonials = [
   {
     quote:
-      "Spire Hub gave us the network and mentorship we needed to close our seed round. The community here is unmatched in Bahrain.",
-    name: "Ahmed Al-Khalifa",
-    role: "CEO, FinFlow",
+      "Spire Hub is full of energy! I'm completely satisfied with the place and team—it was the perfect spot at the perfect time.",
+    name: "Ameera Hashem",
+    role: "Founder of Arima Journey",
   },
   {
     quote:
-      "From hot desk to private office — Spire grew with us. The mentors here have been instrumental in shaping our go-to-market strategy.",
-    name: "Noor Al-Dosari",
-    role: "Founder, GreenTech BH",
+      "Working alone felt different—now, I enjoy more interaction and networking, essential for any startup. Spire truly feels like my second home.",
+    name: "Hussain Al Hesabi",
+    role: "Founder of Beyond Management",
   },
   {
     quote:
-      "The meeting rooms, events, and investor connections made Spire Hub the obvious choice for our startup headquarters.",
-    name: "Yusuf Al-Mahmood",
-    role: "Co-founder, LogiChain",
+      "Spire's innovation is felt from the moment you walk in—plus the aroma of fresh specialty coffee.",
+    name: "Moez",
+    role: "Founder of Sonar Innovation",
   },
 ];
 
@@ -225,17 +207,5 @@ export const footerLinks = {
     { label: "Events", href: "#events" },
     { label: "Mentors", href: "#mentors" },
     { label: "Membership", href: "#membership" },
-    { label: "Blog", href: "#" },
-  ],
-  resources: [
-    { label: "For Startups", href: "#" },
-    { label: "For Investors", href: "#" },
-    { label: "Guides & Tools", href: "#" },
-    { label: "FAQ", href: "#" },
-  ],
-  company: [
-    { label: "About Us", href: "#" },
-    { label: "Careers", href: "#" },
-    { label: "Contact", href: "#" },
   ],
 };

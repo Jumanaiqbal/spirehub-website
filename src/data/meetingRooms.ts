@@ -16,6 +16,7 @@ export interface MeetingRoom {
   layouts?: WorkshopLayout[];
 }
 
+
 export const meetingRooms: MeetingRoom[] = [
   {
     id: "boardroom-a",
@@ -27,6 +28,9 @@ export const meetingRooms: MeetingRoom[] = [
       "https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=800&h=500&fit=crop",
     description: "Executive boardroom with city views — ideal for investor pitches.",
   },
+
+
+  
   {
     id: "focus-room-b",
     name: "Focus Room B",
@@ -59,6 +63,10 @@ export const meetingRooms: MeetingRoom[] = [
   },
 ];
 
+
+
+
+
 export const timeSlots = [
   "09:00",
   "10:00",
@@ -75,4 +83,5 @@ export const durationOptions = [
   { label: "1 hour", value: 60 },
   { label: "2 hours", value: 120 },
   { label: "Half day", value: 240 },
+  { label: "Full day", value: 480 },
 ];

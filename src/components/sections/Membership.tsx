@@ -12,7 +12,11 @@ const iconMap: Record<string, React.ReactNode> = {
   building: <Building className="h-6 w-6" />,
 };
 
-export default function Membership() {
+interface MembershipProps {
+  onSelectPlan: (planName: string) => void;
+}
+
+export default function Membership({ onSelectPlan }: MembershipProps) {
   const [planType, setPlanType] = useState<"standard" | "plus">("standard");
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">(
     "monthly"
@@ -44,7 +48,7 @@ export default function Membership() {
         {/* Toggles */}
         <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Billing Period Toggle */}
-          <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-0.5">
+          <div className="flex items-center gap-2 self-start rounded-full border border-gray-200 bg-gray-50 p-0.5">
             <button
               onClick={() => setBillingPeriod("monthly")}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
@@ -68,7 +72,7 @@ export default function Membership() {
           </div>
 
           {/* Plan Type Toggle */}
-          <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 p-0.5">
+          <div className="flex items-center gap-2 self-start rounded-full border border-gray-200 bg-gray-50 p-0.5">
             <button
               onClick={() => setPlanType("standard")}
               className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
@@ -93,7 +97,7 @@ export default function Membership() {
         </div>
 
         {/* Plans Grid */}
-        <div className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-6 px-2 lg:grid lg:grid-cols-4 lg:gap-8 lg:overflow-visible">
+        <div className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-6 pt-4 px-2 lg:grid lg:grid-cols-4 lg:gap-8 lg:overflow-visible lg:pt-0">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -141,6 +145,7 @@ export default function Membership() {
                 <Button
                   variant={plan.popular ? "primary" : "outline"}
                   className="w-full"
+                  onClick={() => onSelectPlan(plan.name)}
                 >
                   Get Started
                 </Button>

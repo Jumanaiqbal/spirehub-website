@@ -14,6 +14,7 @@ import JoinFormModal from "./components/sections/JoinForm";
 
 export default function App() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-white">
@@ -23,8 +24,13 @@ export default function App() {
         <Stats />
         <Features />
         <Mentors />
-        <Membership />
-        <MeetingRooms />
+        <Membership
+          onSelectPlan={(planName) => {
+            setSelectedPlan(planName);
+            setIsJoinModalOpen(true);
+          }}
+        />
+        <MeetingRooms onOpenJoinForm={() => setIsJoinModalOpen(true)} />
         <Events />
       <Testimonials />
         <CTA onOpenJoinForm={() => setIsJoinModalOpen(true)} />
@@ -32,7 +38,11 @@ export default function App() {
       <Footer />
       <JoinFormModal
         isOpen={isJoinModalOpen}
-        onClose={() => setIsJoinModalOpen(false)}
+        onClose={() => {
+          setIsJoinModalOpen(false);
+          setSelectedPlan(null);
+        }}
+        initialPlan={selectedPlan}
       />
     </div>
   );

@@ -5,6 +5,7 @@ export interface WorkshopLayout {
   label: string;
   capacity: number;
   description: string;
+  image?: string;
 }
 
 export interface RoomPricing {
@@ -47,18 +48,21 @@ export const roomPricingCatalog: RoomPricing[] = [
         label: "Classroom setup",
         capacity: 26,
         description: "Rows of tables — ideal for training sessions",
+        image: "/rooms/workshop-classroom.jpeg",
       },
       {
         id: "u-shape",
         label: "U-shape setup",
         capacity: 20,
         description: "Open centre — ideal for workshops & discussions",
+        image: "/rooms/workshop-u-shape.jpeg",
       },
       {
         id: "meeting-table",
         label: "Meeting table",
         capacity: 12,
         description: "Boardroom style — ideal for 10–12 people",
+        image: "/rooms/workshop-meeting-table.png",
       },
     ],
   },

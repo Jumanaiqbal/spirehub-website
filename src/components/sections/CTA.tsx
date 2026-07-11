@@ -29,7 +29,7 @@ export default function CTA({ onOpenJoinForm }: CTAProps) {
             className="shrink-0"
             onClick={onOpenJoinForm}
           >
-            Join Spire Hub
+            Enquire Now
           </Button>
         </motion.div>
       </div>

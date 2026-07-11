@@ -1,14 +1,19 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { submitContactForm } from "../../services/contact";
 
 interface JoinFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialPlan?: string | null;
 }
 
-export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
+export default function JoinFormModal({
+  isOpen,
+  onClose,
+  initialPlan,
+}: JoinFormModalProps) {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -16,6 +21,17 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
     phone: "",
     comments: "",
   });
+
+
+  
+  useEffect(() => {
+    if (isOpen && initialPlan) {
+      setFormData((prev) => ({
+        ...prev,
+        comments: prev.comments || `Interested in: ${initialPlan} plan`,
+      }));
+    }
+  }, [isOpen, initialPlan]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{
     type: "success" | "error" | null;
@@ -65,14 +81,14 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/50"
+            className="absolute inset-0 bg-black/50"
             onClick={onClose}
           />
 
@@ -82,13 +98,13 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-8 shadow-2xl"
+            className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl sm:p-8"
           >
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-spire-navy">
-                  Join Spire Hub!
+                  Enquire Now
                 </h2>
                 <p className="mt-1 text-sm text-gray-600">
                   Tell us how we can help you grow.
@@ -116,7 +132,7 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
                   onChange={handleChange}
                   required
                   className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-500 transition focus:border-spire-blue focus:outline-none focus:ring-1 focus:ring-spire-blue"
-                  placeholder="John Doe"
+                  placeholder="Fatima Mohamed"
                 />
               </div>
 
@@ -132,7 +148,7 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
                   onChange={handleChange}
                   required
                   className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-500 transition focus:border-spire-blue focus:outline-none focus:ring-1 focus:ring-spire-blue"
-                  placeholder="john@example.com"
+                  placeholder="fatima@example.com"
                 />
               </div>
 
@@ -207,11 +223,11 @@ export default function JoinFormModal({ isOpen, onClose }: JoinFormModalProps) {
                 disabled={isSubmitting}
                 className="mt-6 w-full rounded-lg bg-spire-navy px-6 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
               >
-                {isSubmitting ? "Submitting..." : "Join Spire Hub"}
+                {isSubmitting ? "Submitting..." : "Submit Enquiry"}
               </button>
             </form>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

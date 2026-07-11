@@ -27,6 +27,8 @@ export interface OdooBookingPayload {
   notes?: string;
   amountBhd?: number;
   layout?: string;
+  paid?: boolean;
+  paymentReference?: string;
 }
 
 function roomFields(odoo: OdooEnv): string[] {
@@ -40,6 +42,16 @@ function bookingFields(odoo: OdooEnv): string[] {
 function buildImageUrl(odoo: OdooEnv, roomId: number): string {
   return `${odoo.url}/web/image?model=${odoo.roomModel}&id=${roomId}&field=room_background_image`;
 }
+
+/**
+ * Odoo room ID -> local static image override.
+ * Use when Odoo's own image field is missing or stuck serving a stale cached image.
+ */
+const ROOM_IMAGE_OVERRIDES: Record<number, string> = {
+  1: "/rooms/meeting-room-1.jpeg",
+  2: "/rooms/workshop-classroom.jpeg",
+  3: "/rooms/meeting-room-2.jpeg",
+};
 
 function stripHtml(html: string): string {
   return html
@@ -73,7 +85,9 @@ export async function listOdooRooms(odoo: OdooEnv): Promise<OdooRoom[]> {
       description: rawDescription ? stripHtml(rawDescription) : undefined,
       capacity: 8,
       bookingUrl: record.room_booking_url ? String(record.room_booking_url) : undefined,
-      imageUrl: record.room_background_image ? buildImageUrl(odoo, id) : undefined,
+      imageUrl:
+        ROOM_IMAGE_OVERRIDES[id] ??
+        (record.room_background_image ? buildImageUrl(odoo, id) : undefined),
     };
   });
 }
@@ -155,7 +169,7 @@ async function findOrCreatePartner(
 export async function createOdooBooking(
   odoo: OdooEnv,
   payload: OdooBookingPayload
-): Promise<{ id: number; name: string; paymentStatus: typeof WEBSITE_PAYMENT_STATUS }> {
+): Promise<{ id: number; name: string; paymentStatus: "paid" | typeof WEBSITE_PAYMENT_STATUS }> {
   const available = await checkOdooRoomAvailability(
     odoo,
     payload.roomId,
@@ -184,7 +198,9 @@ export async function createOdooBooking(
     .filter(Boolean)
     .join(" — ");
 
-  const bookingName = `[NOT PAID] Website — ${guestDetails}`;
+  const bookingName = payload.paid
+    ? `[PAID] Website — ${guestDetails}`
+    : `[NOT PAID] Website — ${guestDetails}`;
 
   try {
     await findOrCreatePartner(odoo, payload);
@@ -207,8 +223,10 @@ export async function createOdooBooking(
   const layoutLine = payload.layout ? `Layout: ${payload.layout}\n` : "";
 
   const internalNote = [
-    "Website booking — NOT PAID",
-    "Payment status: Not paid — Spire team to contact guest.",
+    payload.paid ? "Website booking — PAID ONLINE" : "Website booking — NOT PAID",
+    payload.paid
+      ? `Payment status: Paid online via AFS. Reference: ${payload.paymentReference ?? "n/a"}.`
+      : "Payment status: Not paid — Spire team to contact guest.",
     "",
     amountLine && amountLine.trim(),
     `Duration: ${payload.durationMinutes} minutes`,
@@ -238,7 +256,7 @@ export async function createOdooBooking(
   return {
     id: bookingId,
     name: String(record?.name ?? bookingName),
-    paymentStatus: WEBSITE_PAYMENT_STATUS,
+    paymentStatus: payload.paid ? "paid" : WEBSITE_PAYMENT_STATUS,
   };
 }
 
