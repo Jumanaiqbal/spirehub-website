@@ -2,10 +2,12 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionTag, ArrowLink } from "../ui/SectionTag";
+import MentorApplyModal from "./MentorApplyModal";
 import { mentors } from "../../data/mentors";
 
 export default function Mentors() {
   const [current, setCurrent] = useState(0);
+  const [applyOpen, setApplyOpen] = useState(false);
   const visibleCount = 3;
   const maxIndex = mentors.length - visibleCount;
 
@@ -36,6 +38,13 @@ export default function Mentors() {
             <div className="mt-6">
               <ArrowLink href="#membership">Explore membership</ArrowLink>
             </div>
+            <button
+              type="button"
+              onClick={() => setApplyOpen(true)}
+              className="mt-6 rounded-xl border-2 border-spire-navy px-5 py-2.5 text-sm font-semibold text-spire-navy transition-colors hover:bg-spire-navy hover:text-white"
+            >
+              Become a mentor
+            </button>
           </motion.div>
 
           <div className="lg:col-span-3">
@@ -96,6 +105,8 @@ export default function Mentors() {
           </div>
         </div>
       </div>
+
+      <MentorApplyModal isOpen={applyOpen} onClose={() => setApplyOpen(false)} />
     </section>
   );
 }

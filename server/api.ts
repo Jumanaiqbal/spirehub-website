@@ -7,9 +7,10 @@ import {
   listOdooRooms,
   testOdooConnection,
 } from "./odoo/rooms";
-import { createOdooLead } from "./odoo/leads";
+import { createMentorApplication, createOdooLead } from "./odoo/leads";
 import { listUpcomingOdooEvents, registerForOdooEvent } from "./odoo/events";
 import { createAfsCheckout, getAfsEnv, isAfsConfigured, verifyAfsPayment } from "./afs/client";
+import { getDriveEnv, isDriveConfigured, uploadToDrive } from "./google/drive";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -275,6 +276,69 @@ export async function handleOdooApi(
         layout: body.layout,
       });
       sendJson(res, 201, { booking: result });
+      return true;
+    }
+
+    if (path === "/api/mentors/apply" && req.method === "POST") {
+      let body: {
+        fullName?: string;
+        email?: string;
+        phone?: string;
+        title?: string;
+        bio?: string;
+        cvFileName?: string;
+        cvMimeType?: string;
+        cvBase64?: string;
+      };
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        sendJson(res, 400, { error: "Invalid JSON in request body" });
+        return true;
+      }
+
+      const { fullName, email, phone, title, bio, cvFileName, cvMimeType, cvBase64 } = body;
+
+      if (!fullName || !email || !title || !bio || !cvFileName || !cvBase64) {
+        sendJson(res, 400, {
+          error: "fullName, email, title, bio, and a CV file are required",
+        });
+        return true;
+      }
+
+      // Vercel's request body limit is ~4.5MB; keep the CV comfortably below it.
+      if (cvBase64.length > 4_200_000) {
+        sendJson(res, 413, { error: "CV file is too large — please keep it under 3MB." });
+        return true;
+      }
+
+      let cvDriveLink: string | undefined;
+      if (isDriveConfigured(env)) {
+        const upload = await uploadToDrive(getDriveEnv(env), {
+          fileName: `${fullName} — ${cvFileName}`,
+          mimeType: cvMimeType ?? "application/octet-stream",
+          base64Data: cvBase64,
+        });
+        cvDriveLink = upload.webViewLink;
+      }
+
+      const application = await createMentorApplication(odoo, {
+        fullName,
+        email,
+        phone,
+        title,
+        bio,
+        cvFileName,
+        cvMimeType: cvMimeType ?? "application/octet-stream",
+        cvBase64: cvDriveLink ? undefined : cvBase64,
+        cvDriveLink,
+      });
+
+      sendJson(res, 201, {
+        success: true,
+        message: "Application received — we'll be in touch soon.",
+        leadId: application.id,
+      });
       return true;
     }
 

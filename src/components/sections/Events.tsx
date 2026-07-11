@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { SectionTag } from "../ui/SectionTag";
-import FittedImage from "../ui/FittedImage";
 import EventRegisterModal from "./EventRegisterModal";
 import { fetchUpcomingEvents, type SpireEvent } from "../../services/events";
 
@@ -77,11 +76,16 @@ export default function Events() {
               whileHover={{ y: -8 }}
               className="group overflow-hidden rounded-2xl bg-white shadow-sm transition-shadow hover:shadow-lg"
             >
-              <FittedImage src={event.imageUrl ?? FALLBACK_IMAGE} alt={event.name} className="h-48">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={event.imageUrl ?? FALLBACK_IMAGE}
+                  alt={event.name}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
                 <span className="absolute left-4 top-4 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-spire-navy shadow-sm">
                   {formatEventDate(event.dateBegin)}
                 </span>
-              </FittedImage>
+              </div>
               <div className="p-5">
                 <h3 className="font-semibold text-spire-navy">{event.name}</h3>
                 <p className="mt-1 text-sm text-spire-gray">

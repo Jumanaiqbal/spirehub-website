@@ -98,7 +98,6 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
           >
             <p className="text-sm font-semibold text-gray-900">
               {clock}
-              <span className="ml-2 font-normal text-spire-gray">Manama · Sun–Thu</span>
             </p>
 
             <h2 className="mt-4 text-4xl font-bold tracking-tight text-spire-navy md:text-5xl">

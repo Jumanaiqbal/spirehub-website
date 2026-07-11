@@ -21,6 +21,15 @@ const socialLinks = [
       </svg>
     ),
   },
+  {
+    label: "TikTok",
+    href: "https://www.tiktok.com/@spire.hub",
+    icon: (
+      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M16.6915026,4.4744748 L16.6915026,11.4744748 C16.6915026,13.762963 15.1272231,15.5744748 13.1272231,15.5744748 C11.1272231,15.5744748 9.5629436,13.762963 9.5629436,11.4744748 L9.5629436,4.4744748 L6.66338994,4.4744748 L6.66338994,11.4744748 C6.66338994,15.5744748 9.70784662,18.9744748 13.5915026,18.9744748 C17.4751586,18.9744748 20.5196152,15.5744748 20.5196152,11.4744748 L20.5196152,7.9744748 C21.6915026,8.8744748 23.1272231,9.4744748 24.6915026,9.4744748 L24.6915026,6.7244748 C23.4272231,6.4744748 22.3572357,5.7744748 21.6915026,4.8744748 C21.0257695,3.9744748 20.5196152,2.9744748 20.5196152,1.7244748 L20.5196152,0.649474762 L17.6215267,0.649474762 C17.6915026,1.68 17.6915026,3.31 16.6915026,4.4744748 Z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function Footer() {
@@ -70,25 +79,13 @@ export default function Footer() {
             <p className="text-sm text-spire-gray">
               &copy; {new Date().getFullYear()} Spire Hub. All rights reserved.
             </p>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex gap-6">
-                <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
-                  Privacy Policy
-                </a>
-                <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
-                  Terms of Service
-                </a>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="email"
-                  placeholder="Subscribe to our newsletter"
-                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm outline-none focus:border-spire-blue focus:ring-1 focus:ring-spire-blue"
-                />
-                <button className="flex h-10 w-10 items-center justify-center rounded-lg bg-spire-navy text-white transition-colors hover:bg-spire-navy-dark">
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
+            <div className="flex gap-6">
+              <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
+                Privacy Policy
+              </a>
+              <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
+                Terms of Service
+              </a>
             </div>
           </div>
         </div>
