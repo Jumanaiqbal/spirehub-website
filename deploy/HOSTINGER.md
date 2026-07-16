@@ -53,18 +53,50 @@ su - spire
 git clone git@github.com:Jumanaiqbal/spirehub-website.git spire-hub-website
 cd spire-hub-website
 npm install
-cp .env.example .env
-nano .env   # fill in real ODOO_/AFS_ credentials — see below
+nano .env   # create it fresh — see the required variables below
 npm run build
 ```
 
-The `.env` values are the same ones already configured wherever this was
-running before (Vercel project settings) — copy them over rather than
-re-generating: `ODOO_URL`, `ODOO_DB`, `ODOO_USERNAME`, `ODOO_API_KEY`,
-`AFS_ENTITY_ID`, `AFS_ACCESS_TOKEN`, `AFS_BASE_URL`, `AFS_CURRENCY`, the
-`ODOO_INVOICE_JOURNAL_ID`/`ODOO_AFS_JOURNAL_ID`/etc. invoicing IDs, and the
-`VITE_SPIRE_BANK_*` bank transfer details. See `.env.example` for the full
-list.
+`.env` is never committed to the repo (not even as a template — it's kept
+fully out of git), so it has to be created by hand on the server. It needs
+these variables, copied from wherever they're currently kept (e.g. the
+previous Vercel project settings, or a password manager):
+
+```
+ODOO_URL=
+ODOO_DB=
+ODOO_USERNAME=
+ODOO_API_KEY=
+
+ODOO_ROOM_MODEL=room.room
+ODOO_BOOKING_MODEL=room.booking
+ODOO_ROOM_FIELDS=id,name,short_code,description,room_booking_url,room_background_image,is_available
+ODOO_BOOKING_FIELDS=id,name,room_id,start_datetime,stop_datetime
+ODOO_TIMEZONE=Asia/Bahrain
+
+VITE_SPIRE_BANK_ACCOUNT_NAME=
+VITE_SPIRE_BANK_IBAN=
+VITE_SPIRE_BANK_ACCOUNT_NUMBER=
+VITE_SPIRE_BANK_NAME=
+VITE_SPIRE_BANK_SWIFT=
+VITE_SPIRE_PAYMENT_DEADLINE_HOURS=24
+
+AFS_ENTITY_ID=
+AFS_ACCESS_TOKEN=
+AFS_BASE_URL=
+AFS_CURRENCY=BHD
+VITE_AFS_PAYMENTS_ENABLED=false
+
+ODOO_INVOICE_JOURNAL_ID=1
+ODOO_AFS_JOURNAL_ID=15
+ODOO_AFS_PAYMENT_METHOD_LINE_ID=19
+ODOO_SALE_TAX_ID=1
+ODOO_MEETING_ROOM_PRODUCT_ID=511
+ODOO_WORKSHOP_ROOM_PRODUCT_ID=874
+```
+
+Leave `VITE_AFS_PAYMENTS_ENABLED=false` until BENEFIT/AFS approval is
+confirmed live (see the note below).
 
 **AFS payment gateway:** its redirect URL is derived from the page URL at
 checkout time, so no code change is needed there — but if AFS has your
