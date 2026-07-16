@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import Logo from "../ui/Logo";
 import { footerLinks } from "../../data/content";
 
@@ -80,10 +79,10 @@ export default function Footer() {
               &copy; {new Date().getFullYear()} Spire Hub. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
+              <a href="/privacy.html" className="text-sm text-spire-gray hover:text-spire-navy">
                 Privacy Policy
               </a>
-              <a href="#" className="text-sm text-spire-gray hover:text-spire-navy">
+              <a href="/terms.html" className="text-sm text-spire-gray hover:text-spire-navy">
                 Terms of Service
               </a>
             </div>
