@@ -20,6 +20,13 @@ npm run build
 npm run preview
 ```
 
+## Deploying to Hostinger
+
+See [deploy/HOSTINGER.md](deploy/HOSTINGER.md) for the full VPS setup guide
+(PM2 + nginx + TLS). `npm run start` runs the production server
+(`server/prod-server.ts`), which serves the built `dist/` output and the
+`/api/*` backend from a single Node process.
+
 ## Tech Stack
 
 - **React 19** + **TypeScript**

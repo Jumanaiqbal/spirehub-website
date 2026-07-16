@@ -12,7 +12,6 @@ dist
 dist-ssr
 *.local
 .env
-.env.example
 .venv
 
 # Editor directories and files
