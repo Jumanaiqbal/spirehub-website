@@ -79,9 +79,9 @@ export const timeSlots = [
 ];
 
 export const durationOptions = [
-  { label: "30 min", value: 30 },
   { label: "1 hour", value: 60 },
   { label: "2 hours", value: 120 },
-  { label: "Half day", value: 240 },
-  { label: "Full day", value: 480 },
+  { label: "3 hours", value: 180 },
+  { label: "4 hours", value: 240 },
+  { label: "5 hours", value: 300 },
 ];

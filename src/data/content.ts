@@ -42,6 +42,7 @@ export const features = [
   },
 ];
 
+
 export const membershipPlans = {
   standard: [
     {

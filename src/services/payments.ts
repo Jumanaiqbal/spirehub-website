@@ -52,23 +52,28 @@ export async function verifyPayment(
   resourcePath: string,
   pending: PendingBooking
 ): Promise<VerifyPaymentResult> {
-  const response = await fetchWithTimeout("/api/payments/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      resourcePath,
-      roomId: Number(pending.room.odooId ?? pending.room.id),
-      date: pending.date,
-      time: pending.time,
-      duration: pending.duration,
-      layout: pending.layout,
-      name: pending.name,
-      email: pending.email,
-      phone: pending.phone,
-      company: pending.company,
-      notes: pending.notes,
-    }),
-  });
+  const response = await fetchWithTimeout(
+    "/api/payments/verify",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        resourcePath,
+        roomId: Number(pending.room.odooId ?? pending.room.id),
+        roomName: pending.room.name,
+        date: pending.date,
+        time: pending.time,
+        duration: pending.duration,
+        layout: pending.layout,
+        name: pending.name,
+        email: pending.email,
+        phone: pending.phone,
+        company: pending.company,
+        notes: pending.notes,
+      }),
+    },
+    30_000
+  );
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error ?? `Request failed (${response.status})`);

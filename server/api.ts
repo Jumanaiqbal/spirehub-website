@@ -4,13 +4,14 @@ import {
   checkAllOdooRoomAvailability,
   checkOdooRoomAvailability,
   createOdooBooking,
+  findOrCreatePartner,
   listOdooRooms,
   testOdooConnection,
 } from "./odoo/rooms";
 import { createMentorApplication, createOdooLead } from "./odoo/leads";
 import { listUpcomingOdooEvents, registerForOdooEvent } from "./odoo/events";
+import { createAndPayBookingInvoice, getInvoiceEnv } from "./odoo/invoices";
 import { createAfsCheckout, getAfsEnv, isAfsConfigured, verifyAfsPayment } from "./afs/client";
-import { getDriveEnv, isDriveConfigured, uploadToDrive } from "./google/drive";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -240,7 +241,7 @@ export async function handleOdooApi(
       const hourlyRate = pricing?.hourlyRate ?? 5.5;
       const amount = calculateBookingTotal(hourlyRate, durationMinutes);
 
-      const booking = await createOdooBooking(odoo, {
+      const bookingPayload = {
         roomId,
         date: body.date,
         time: body.time,
@@ -254,7 +255,26 @@ export async function handleOdooApi(
         amountBhd: amount,
         paid: true,
         paymentReference: result.merchantTransactionId,
-      });
+      };
+
+      const booking = await createOdooBooking(odoo, bookingPayload);
+
+      try {
+        const partnerId = await findOrCreatePartner(odoo, bookingPayload);
+        await createAndPayBookingInvoice(odoo, getInvoiceEnv(env), {
+          partnerId,
+          roomName: String(body.roomName ?? "Meeting Room"),
+          isWorkshop: pricing?.isWorkshop ?? false,
+          date: body.date,
+          time: body.time,
+          durationMinutes,
+          totalBhd: amount,
+          paymentReference: result.merchantTransactionId ?? "",
+        });
+      } catch {
+        // Booking already succeeded and the guest is confirmed — invoicing
+        // failures shouldn't block the response. Spire team can invoice manually.
+      }
 
       sendJson(res, 201, { success: true, booking });
       return true;
@@ -286,9 +306,7 @@ export async function handleOdooApi(
         phone?: string;
         title?: string;
         bio?: string;
-        cvFileName?: string;
-        cvMimeType?: string;
-        cvBase64?: string;
+        linkedinUrl?: string;
       };
       try {
         body = JSON.parse(await readBody(req));
@@ -297,29 +315,13 @@ export async function handleOdooApi(
         return true;
       }
 
-      const { fullName, email, phone, title, bio, cvFileName, cvMimeType, cvBase64 } = body;
+      const { fullName, email, phone, title, bio, linkedinUrl } = body;
 
-      if (!fullName || !email || !title || !bio || !cvFileName || !cvBase64) {
+      if (!fullName || !email || !title || !bio || !linkedinUrl) {
         sendJson(res, 400, {
-          error: "fullName, email, title, bio, and a CV file are required",
+          error: "fullName, email, title, bio, and linkedinUrl are required",
         });
         return true;
-      }
-
-      // Vercel's request body limit is ~4.5MB; keep the CV comfortably below it.
-      if (cvBase64.length > 4_200_000) {
-        sendJson(res, 413, { error: "CV file is too large — please keep it under 3MB." });
-        return true;
-      }
-
-      let cvDriveLink: string | undefined;
-      if (isDriveConfigured(env)) {
-        const upload = await uploadToDrive(getDriveEnv(env), {
-          fileName: `${fullName} — ${cvFileName}`,
-          mimeType: cvMimeType ?? "application/octet-stream",
-          base64Data: cvBase64,
-        });
-        cvDriveLink = upload.webViewLink;
       }
 
       const application = await createMentorApplication(odoo, {
@@ -328,10 +330,7 @@ export async function handleOdooApi(
         phone,
         title,
         bio,
-        cvFileName,
-        cvMimeType: cvMimeType ?? "application/octet-stream",
-        cvBase64: cvDriveLink ? undefined : cvBase64,
-        cvDriveLink,
+        linkedinUrl,
       });
 
       sendJson(res, 201, {

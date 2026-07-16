@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, FileText, Loader2, Upload, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { CheckCircle2, Loader2, X } from "lucide-react";
+import { useState } from "react";
 import { fetchWithTimeout } from "../../services/fetchWithTimeout";
 
 interface MentorApplyModalProps {
@@ -8,85 +8,39 @@ interface MentorApplyModalProps {
   onClose: () => void;
 }
 
-const MAX_CV_BYTES = 3 * 1024 * 1024;
-const ACCEPTED_CV_TYPES = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
-
-function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
-    };
-    reader.onerror = () => reject(new Error("Could not read the file."));
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function MentorApplyModal({ isOpen, onClose }: MentorApplyModalProps) {
-  const [form, setForm] = useState({ fullName: "", email: "", phone: "", title: "", bio: "" });
-  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    title: "",
+    bio: "",
+    linkedinUrl: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
-    setForm({ fullName: "", email: "", phone: "", title: "", bio: "" });
-    setCvFile(null);
+    setForm({ fullName: "", email: "", phone: "", title: "", bio: "", linkedinUrl: "" });
     setError(null);
     setSuccess(false);
     onClose();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setError(null);
-
-    if (!file) {
-      setCvFile(null);
-      return;
-    }
-    if (!ACCEPTED_CV_TYPES.includes(file.type)) {
-      setError("Please upload your CV as a PDF or Word document.");
-      setCvFile(null);
-      return;
-    }
-    if (file.size > MAX_CV_BYTES) {
-      setError("CV file is too large — please keep it under 3MB.");
-      setCvFile(null);
-      return;
-    }
-    setCvFile(file);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cvFile) {
-      setError("Please attach your CV.");
-      return;
-    }
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const cvBase64 = await readFileAsBase64(cvFile);
       const response = await fetchWithTimeout(
         "/api/mentors/apply",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...form,
-            cvFileName: cvFile.name,
-            cvMimeType: cvFile.type,
-            cvBase64,
-          }),
+          body: JSON.stringify(form),
         },
         30_000
       );
@@ -230,35 +184,17 @@ export default function MentorApplyModal({ isOpen, onClose }: MentorApplyModalPr
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">CV *</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    LinkedIn profile URL *
+                  </label>
                   <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleFileChange}
-                    className="hidden"
+                    type="url"
+                    required
+                    value={form.linkedinUrl}
+                    onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
+                    className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-500 transition focus:border-spire-blue focus:outline-none focus:ring-1 focus:ring-spire-blue"
+                    placeholder="https://linkedin.com/in/yourname"
                   />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-4 text-sm transition ${
-                      cvFile
-                        ? "border-green-300 bg-green-50 text-green-800"
-                        : "border-gray-300 text-gray-600 hover:border-spire-blue hover:text-spire-navy"
-                    }`}
-                  >
-                    {cvFile ? (
-                      <>
-                        <FileText className="h-4 w-4" />
-                        {cvFile.name}
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        Upload your CV (PDF or Word, max 3MB)
-                      </>
-                    )}
-                  </button>
                 </div>
 
                 {error && (

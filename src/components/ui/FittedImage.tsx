@@ -10,6 +10,8 @@ interface FittedImageProps {
  * copy of itself — avoids both cropping the subject and dead letterbox space
  * when photo and container aspect ratios don't match.
  */
+
+
 export default function FittedImage({ src, alt, className = "", children }: FittedImageProps) {
   return (
     <div className={`relative overflow-hidden ${className}`}>

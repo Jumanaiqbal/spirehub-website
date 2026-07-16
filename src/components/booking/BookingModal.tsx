@@ -32,6 +32,10 @@ type Step = "rooms" | "details" | "payment" | "success";
 
 const PENDING_BOOKING_KEY = "spireHub_pendingCardBooking";
 
+// AFS/BENEFIT gateway approval is pending — until it's live, bookings only
+// offer bank transfer. Flip to "true" once the merchant account is approved.
+const AFS_PAYMENTS_ENABLED = import.meta.env.VITE_AFS_PAYMENTS_ENABLED === "true";
+
 function getShopperResultUrl(): string {
   return `${window.location.origin}${window.location.pathname}?afsPayment=1`;
 }
@@ -76,6 +80,7 @@ export default function BookingModal({
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [afsBaseUrl, setAfsBaseUrl] = useState<string | null>(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const detailsFormRef = useRef<HTMLFormElement>(null);
   const skipAutoRefresh = useRef(true);
   const resumingPayment = useRef(
     typeof window !== "undefined" &&
@@ -285,6 +290,7 @@ export default function BookingModal({
 
   const handleReserveBankTransfer = async () => {
     if (!selectedRoom) return;
+    if (!detailsFormRef.current?.reportValidity()) return;
 
     setLoading(true);
     setSubmitError(null);
@@ -323,7 +329,7 @@ export default function BookingModal({
 
   const handlePayOnline = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRoom || !bookingSummary) return;
+    if (!AFS_PAYMENTS_ENABLED || !selectedRoom || !bookingSummary) return;
 
     setPayingOnline(true);
     setSubmitError(null);
@@ -623,7 +629,7 @@ export default function BookingModal({
                   </div>
                 )}
 
-                <form onSubmit={handlePayOnline} className="space-y-4">
+                <form ref={detailsFormRef} onSubmit={handlePayOnline} className="space-y-4">
                   {submitError && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
                       {submitError}
@@ -684,29 +690,65 @@ export default function BookingModal({
                     />
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={payingOnline || loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
-                  >
-                    {payingOnline ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Preparing payment…
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="h-4 w-4" />
-                        Pay {formatBhd(bookingSummary?.total ?? 0)} online now
-                      </>
-                    )}
-                  </button>
+                  <p className="text-xs text-spire-gray">
+                    By booking, you agree to our{" "}
+                    <a
+                      href="/terms.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-spire-blue hover:underline"
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    (including our{" "}
+                    <a
+                      href="/terms.html#cancellations"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-spire-blue hover:underline"
+                    >
+                      Cancellation Policy
+                    </a>
+                    ) and{" "}
+                    <a
+                      href="/privacy.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-spire-blue hover:underline"
+                    >
+                      Privacy Policy
+                    </a>
+                  </p>
+
+                  {AFS_PAYMENTS_ENABLED && (
+                    <button
+                      type="submit"
+                      disabled={payingOnline}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
+                    >
+                      {payingOnline ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Preparing payment…
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4" />
+                          Pay {formatBhd(bookingSummary?.total ?? 0)} online now
+                        </>
+                      )}
+                    </button>
+                  )}
 
                   <button
                     type="button"
                     disabled={loading || payingOnline}
                     onClick={handleReserveBankTransfer}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-spire-gray transition-colors hover:border-spire-blue hover:text-spire-navy disabled:opacity-70"
+                    className={
+                      AFS_PAYMENTS_ENABLED
+                        ? "flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-spire-gray transition-colors hover:border-spire-blue hover:text-spire-navy disabled:opacity-70"
+                        : "flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
+                    }
                   >
                     {loading ? (
                       <>

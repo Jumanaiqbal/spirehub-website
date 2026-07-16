@@ -71,6 +71,7 @@ function extractRoomId(roomField: unknown): number | null {
   return null;
 }
 
+
 export async function listOdooRooms(odoo: OdooEnv): Promise<OdooRoom[]> {
   const fields = roomFields(odoo);
   const records = await searchRead(odoo, odoo.roomModel, [], fields);
@@ -141,7 +142,7 @@ export async function checkOdooRoomAvailability(
   return !booked.has(roomId);
 }
 
-async function findOrCreatePartner(
+export async function findOrCreatePartner(
   odoo: OdooEnv,
   payload: OdooBookingPayload
 ): Promise<number> {
