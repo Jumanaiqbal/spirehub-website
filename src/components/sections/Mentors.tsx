@@ -1,15 +1,36 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { SectionTag, ArrowLink } from "../ui/SectionTag";
 import MentorApplyModal from "./MentorApplyModal";
 import { mentors } from "../../data/mentors";
 
+/** Cards shown at once, matching the grid's responsive columns. */
+function getVisibleCount(): number {
+  if (typeof window === "undefined") return 3;
+  if (window.matchMedia("(min-width: 1024px)").matches) return 3;
+  if (window.matchMedia("(min-width: 640px)").matches) return 2;
+  return 1;
+}
+
 export default function Mentors() {
   const [current, setCurrent] = useState(0);
   const [applyOpen, setApplyOpen] = useState(false);
-  const visibleCount = 3;
-  const maxIndex = mentors.length - visibleCount;
+  const [visibleCount, setVisibleCount] = useState(getVisibleCount);
+  const maxIndex = Math.max(0, mentors.length - visibleCount);
+
+  useEffect(() => {
+    const queries = ["(min-width: 1024px)", "(min-width: 640px)"].map((q) =>
+      window.matchMedia(q)
+    );
+    const update = () => {
+      const count = getVisibleCount();
+      setVisibleCount(count);
+      setCurrent((c) => Math.min(c, Math.max(0, mentors.length - count)));
+    };
+    queries.forEach((mq) => mq.addEventListener("change", update));
+    return () => queries.forEach((mq) => mq.removeEventListener("change", update));
+  }, []);
 
   const prev = () => setCurrent((c) => Math.max(0, c - 1));
   const next = () => setCurrent((c) => Math.min(maxIndex, c + 1));

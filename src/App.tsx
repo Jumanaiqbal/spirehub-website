@@ -11,6 +11,7 @@ import Events from "./components/sections/Events";
 import Testimonials from "./components/sections/Testimonials";
 import CTA from "./components/sections/CTA";
 import JoinFormModal from "./components/sections/JoinForm";
+import WhatsAppButton from "./components/ui/WhatsAppButton";
 
 export default function App() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function App() {
         <CTA onOpenJoinForm={() => setIsJoinModalOpen(true)} />
       </main>
       <Footer />
+      <WhatsAppButton />
       <JoinFormModal
         isOpen={isJoinModalOpen}
         onClose={() => {
