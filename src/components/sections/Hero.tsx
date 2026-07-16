@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import Button from "../ui/Button";
 import { SectionTag } from "../ui/SectionTag";
-import heroBanner from "../../assets/hero-banner.png";
+import heroBanner from "../../assets/hero-banner.jpg";
 
 interface HeroProps {
   onOpenJoinForm: () => void;
