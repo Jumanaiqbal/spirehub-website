@@ -79,6 +79,7 @@ export async function handleOdooApi(
         email?: string;
         phone?: string;
         company?: string;
+        answers?: { questionId?: number; text?: string; answerId?: number }[];
       };
       try {
         body = JSON.parse(await readBody(req));
@@ -87,7 +88,7 @@ export async function handleOdooApi(
         return true;
       }
 
-      const { eventId, name, email, phone, company } = body;
+      const { eventId, name, email, phone, company, answers } = body;
 
       if (!eventId || !name || !email || !phone) {
         sendJson(res, 400, {
@@ -102,6 +103,13 @@ export async function handleOdooApi(
         email,
         phone,
         company,
+        answers: (answers ?? [])
+          .filter((a) => a && Number(a.questionId))
+          .map((a) => ({
+            questionId: Number(a.questionId),
+            text: typeof a.text === "string" ? a.text : undefined,
+            answerId: a.answerId != null ? Number(a.answerId) : undefined,
+          })),
       });
 
       sendJson(res, 201, {

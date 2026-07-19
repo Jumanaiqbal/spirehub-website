@@ -1,5 +1,22 @@
 import { fetchWithTimeout } from "./fetchWithTimeout";
 
+export type EventQuestionType =
+  | "simple_choice"
+  | "text_box"
+  | "name"
+  | "email"
+  | "phone"
+  | "company_name";
+
+export interface EventQuestion {
+  id: number;
+  title: string;
+  type: EventQuestionType;
+  required: boolean;
+  sequence: number;
+  options: { id: number; name: string }[];
+}
+
 export interface SpireEvent {
   id: number;
   name: string;
@@ -8,6 +25,16 @@ export interface SpireEvent {
   description?: string;
   websiteUrl?: string;
   imageUrl?: string;
+  organizer?: string;
+  venueName?: string;
+  venueAddress?: string;
+  questions?: EventQuestion[];
+}
+
+export interface EventRegistrationAnswer {
+  questionId: number;
+  text?: string;
+  answerId?: number;
 }
 
 export interface EventRegistration {
@@ -16,6 +43,7 @@ export interface EventRegistration {
   email: string;
   phone: string;
   company?: string;
+  answers?: EventRegistrationAnswer[];
 }
 
 export async function fetchUpcomingEvents(): Promise<SpireEvent[]> {
