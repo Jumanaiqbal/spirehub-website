@@ -51,8 +51,35 @@ export interface EventRegistrationPayload {
   answers?: EventRegistrationAnswer[];
 }
 
-function buildEventImageUrl(odoo: OdooEnv, eventId: number): string {
-  return `${odoo.url}/web/image?model=event.event&id=${eventId}&field=image_1024`;
+/**
+ * Served by our own API rather than Odoo's public /web/image URL: unpublished
+ * events get a placeholder from Odoo for anonymous visitors, and the public
+ * URL never changes, so photo updates in Odoo wouldn't show. The v= param is
+ * the record's write_date, so any edit busts browser caches immediately.
+ */
+function buildEventImageUrl(eventId: number, writeDate: string): string {
+  return `/api/events/image?id=${eventId}&v=${encodeURIComponent(writeDate)}`;
+}
+
+/** Raw image bytes for an event, read via the authenticated API. */
+export async function getOdooEventImage(
+  odoo: OdooEnv,
+  eventId: number
+): Promise<{ data: Buffer; contentType: string } | null> {
+  const [record] = await searchRead(
+    odoo,
+    "event.event",
+    [["id", "=", eventId]],
+    ["image_1024"],
+    1
+  );
+  if (!record?.image_1024) return null;
+
+  const data = Buffer.from(String(record.image_1024), "base64");
+  const contentType = data.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))
+    ? "image/jpeg"
+    : "image/png";
+  return { data, contentType };
 }
 
 function stripHtml(html: string): string {
@@ -154,6 +181,7 @@ export async function listUpcomingOdooEvents(
       "description",
       "website_url",
       "image_1024",
+      "write_date",
       "address_id",
       "organizer_id",
     ],
@@ -210,7 +238,9 @@ export async function listUpcomingOdooEvents(
         dateEnd: toIsoUtc(String(record.date_end ?? record.date_begin)),
         description: rawDescription ? stripHtml(rawDescription) : undefined,
         websiteUrl: record.website_url ? `${odoo.url}${record.website_url}` : undefined,
-        imageUrl: record.image_1024 ? buildEventImageUrl(odoo, id) : undefined,
+        imageUrl: record.image_1024
+          ? buildEventImageUrl(id, String(record.write_date ?? ""))
+          : undefined,
         organizer: Array.isArray(record.organizer_id)
           ? String(record.organizer_id[1])
           : undefined,

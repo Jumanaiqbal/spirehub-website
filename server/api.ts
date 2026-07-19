@@ -9,7 +9,11 @@ import {
   testOdooConnection,
 } from "./odoo/rooms";
 import { createMentorApplication, createOdooLead } from "./odoo/leads";
-import { listUpcomingOdooEvents, registerForOdooEvent } from "./odoo/events";
+import {
+  getOdooEventImage,
+  listUpcomingOdooEvents,
+  registerForOdooEvent,
+} from "./odoo/events";
 import { createAndPayBookingInvoice, getInvoiceEnv } from "./odoo/invoices";
 import { createAfsCheckout, getAfsEnv, isAfsConfigured, verifyAfsPayment } from "./afs/client";
 import { findRoomPricing } from "../src/data/roomPricing";
@@ -69,6 +73,28 @@ export async function handleOdooApi(
     if (path === "/api/events" && req.method === "GET") {
       const events = await listUpcomingOdooEvents(odoo);
       sendJson(res, 200, { events });
+      return true;
+    }
+
+    if (path === "/api/events/image" && req.method === "GET") {
+      const eventId = Number(url.searchParams.get("id"));
+      if (!eventId) {
+        sendJson(res, 400, { error: "id is required" });
+        return true;
+      }
+
+      const image = await getOdooEventImage(odoo, eventId);
+      if (!image) {
+        sendJson(res, 404, { error: "No image for this event" });
+        return true;
+      }
+
+      res.statusCode = 200;
+      res.setHeader("Content-Type", image.contentType);
+      // The v= query param changes whenever the event is edited in Odoo,
+      // so long-lived caching is safe here.
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.end(image.data);
       return true;
     }
 
