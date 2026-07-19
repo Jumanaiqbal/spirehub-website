@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 import Hero from "./components/sections/Hero";
@@ -16,6 +16,26 @@ import WhatsAppButton from "./components/ui/WhatsAppButton";
 export default function App() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+  // Deep links like /#events land before React has rendered the sections,
+  // so the browser's native anchor jump finds nothing. Once mounted, scroll
+  // to the hash target ourselves — retrying briefly since some sections
+  // (e.g. events) appear only after data loads.
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+
+    let attempts = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      } else if (attempts++ < 20) {
+        window.setTimeout(tryScroll, 150);
+      }
+    };
+    window.setTimeout(tryScroll, 100);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
