@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import Button from "../ui/Button";
 import { SectionTag } from "../ui/SectionTag";
-import heroBanner from "../../assets/hero-banner.jpg";
+import heroBanner from "../../assets/spire-hub-office-exterior-seef-bahrain.jpg";
 
 interface HeroProps {
   onOpenJoinForm: () => void;
@@ -68,12 +68,15 @@ export default function Hero({ onOpenJoinForm }: HeroProps) {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative h-[280px] sm:h-[380px] lg:h-[520px] xl:h-[580px]"
+          className="relative aspect-[1086/940] w-full"
         >
           <img
             src={heroBanner}
-            alt="Spire Hub modern office interior with spiral staircase"
-            className="h-full w-full object-cover object-left"
+            alt="Spire Hub's blue office building exterior in Seef, Bahrain — coworking space and private offices for startups"
+            className="h-full w-full object-cover object-center"
+            fetchPriority="high"
+            width={1086}
+            height={940}
           />
         </motion.div>
       </div>
