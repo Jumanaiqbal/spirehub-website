@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 import Button from "../ui/Button";
 import { SectionTag } from "../ui/SectionTag";
-import heroBanner from "../../assets/hero-banner.jpg";
+import heroBanner from "../../assets/spire-building.jpg";
 
 interface HeroProps {
   onOpenJoinForm: () => void;
@@ -72,9 +72,14 @@ export default function Hero({ onOpenJoinForm }: HeroProps) {
         >
           <img
             src={heroBanner}
-            alt="Spire Hub modern office interior with spiral staircase"
-            className="h-full w-full object-cover object-left"
+            alt="Spire Hub building in Seef, Bahrain"
+            className="h-full w-full object-contain object-center"
           />
+          {/* Fade the image into the white section background so it reads
+              as one continuous scene rather than a hard-edged photo block. */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-16 bg-gradient-to-r from-white to-transparent lg:block xl:w-24" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent sm:h-10" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white to-transparent lg:hidden" />
         </motion.div>
       </div>
     </section>
