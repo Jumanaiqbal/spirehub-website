@@ -42,4 +42,10 @@ export const mentors: Mentor[] = [
     image: "/mentors/sayed-ebrahim.jpeg",
     profileUrl: "https://www.linkedin.com/in/sayed-ebrahim-mahfoodh-bb093433/",
   },
+  {
+    name: "Hashem Jaafar",
+    role: "Creative Director of Chameleon Creative Studio",
+    image: "/mentors/hashem-jaafar.jpeg",
+    profileUrl: "https://www.linkedin.com/in/hashem-jaafar-76096844",
+  },
 ];
