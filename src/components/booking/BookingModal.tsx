@@ -331,7 +331,7 @@ export default function BookingModal({
 
   const handlePayOnline = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!AFS_PAYMENTS_ENABLED || !selectedRoom || !bookingSummary) return;
+    if (!selectedRoom || !bookingSummary) return;
 
     setPayingOnline(true);
     setSubmitError(null);
@@ -722,25 +722,24 @@ export default function BookingModal({
                     </a>
                   </p>
 
-                  {AFS_PAYMENTS_ENABLED && (
-                    <button
-                      type="submit"
-                      disabled={payingOnline}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
-                    >
-                      {payingOnline ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Preparing payment…
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-4 w-4" />
-                          Pay {formatBhd(bookingSummary?.total ?? 0)} online now
-                        </>
-                      )}
-                    </button>
-                  )}
+                  {/* Card is now the only booking method — always show. */}
+                  <button
+                    type="submit"
+                    disabled={payingOnline}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
+                  >
+                    {payingOnline ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Preparing payment…
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4" />
+                        Pay {formatBhd(bookingSummary?.total ?? 0)} online now
+                      </>
+                    )}
+                  </button>
 
                   {BANK_TRANSFER_ENABLED && (
                     <button
