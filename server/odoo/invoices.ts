@@ -41,6 +41,49 @@ export interface BookingInvoicePayload {
   paymentReference: string;
 }
 
+/**
+ * Resolve Odoo's standard "Invoice: Sending" mail template. The stable XML id
+ * is account.email_template_edi_invoice; fall back to any account.move template
+ * so this keeps working across Odoo versions.
+ */
+async function resolveInvoiceTemplateId(odoo: OdooEnv): Promise<number | undefined> {
+  try {
+    const ref = await executeKw<[string, number] | false>(
+      odoo,
+      "ir.model.data",
+      "check_object_reference",
+      ["account", "email_template_edi_invoice"]
+    );
+    if (Array.isArray(ref) && typeof ref[1] === "number") return ref[1];
+  } catch {
+    // XML id not present on this instance — fall through to a search.
+  }
+
+  const [tmpl] = await searchRead(
+    odoo,
+    "mail.template",
+    [["model", "=", "account.move"]],
+    ["id"],
+    1
+  );
+  return tmpl ? Number(tmpl.id) : undefined;
+}
+
+/**
+ * Email the posted invoice to the customer using the resolved mail template.
+ * force_send delivers immediately rather than queueing for the mail cron.
+ */
+async function sendInvoiceEmail(odoo: OdooEnv, invoiceId: number): Promise<void> {
+  const templateId = await resolveInvoiceTemplateId(odoo);
+  if (!templateId) {
+    throw new Error("No invoice email template found on this Odoo instance.");
+  }
+
+  await executeKw(odoo, "mail.template", "send_mail", [[templateId], invoiceId], {
+    force_send: true,
+  });
+}
+
 function addMinutesToLocalTime(time: string, minutes: number): string {
   const [hours, mins] = time.split(":").map(Number);
   const total = hours * 60 + mins + minutes;
@@ -116,6 +159,14 @@ export async function createAndPayBookingInvoice(
   await executeKw(odoo, "account.payment.register", "action_create_payments", [[wizardId]], {
     context: { active_model: "account.move", active_ids: [invoiceId] },
   });
+
+  // Email the paid invoice to the customer. Isolated so a mail failure never
+  // rolls back the already-created-and-paid invoice.
+  try {
+    await sendInvoiceEmail(odoo, invoiceId);
+  } catch (error) {
+    console.error(`Invoice ${invoiceName} created but email failed to send:`, error);
+  }
 
   return { invoiceId, invoiceName };
 }

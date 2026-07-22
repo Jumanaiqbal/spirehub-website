@@ -36,6 +36,10 @@ const PENDING_BOOKING_KEY = "spireHub_pendingCardBooking";
 // offer bank transfer. Flip to "true" once the merchant account is approved.
 const AFS_PAYMENTS_ENABLED = import.meta.env.VITE_AFS_PAYMENTS_ENABLED === "true";
 
+// Card payment is now the only booking method. The bank-transfer fallback below
+// is kept intact but hidden — flip to "true" to re-offer it (e.g. AFS outage).
+const BANK_TRANSFER_ENABLED = false;
+
 function getShopperResultUrl(): string {
   return `${window.location.origin}${window.location.pathname}?afsPayment=1`;
 }
@@ -268,14 +272,12 @@ export default function BookingModal({
       locale: "en",
     };
 
-    const script = document.createElement("script");
-    script.src = `${afsBaseUrl}/v1/paymentWidgets.js?checkoutId=${checkoutId}`;
-    document.body.appendChild(script);
+    const scriptSrc = `${afsBaseUrl}/v1/paymentWidgets.js?checkoutId=${checkoutId}`;
+    if (document.querySelector(`script[src="${scriptSrc}"]`)) return;
 
-    return () => {
-      document.body.removeChild(script);
-      delete (window as unknown as Record<string, unknown>).wpwlOptions;
-    };
+    const script = document.createElement("script");
+    script.src = scriptSrc;
+    document.body.appendChild(script);
   }, [step, checkoutId, afsBaseUrl]);
 
   const resetAndClose = () => {
@@ -740,25 +742,27 @@ export default function BookingModal({
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    disabled={loading || payingOnline}
-                    onClick={handleReserveBankTransfer}
-                    className={
-                      AFS_PAYMENTS_ENABLED
-                        ? "flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-spire-gray transition-colors hover:border-spire-blue hover:text-spire-navy disabled:opacity-70"
-                        : "flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
-                    }
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Reserving…
-                      </>
-                    ) : (
-                      "Reserve now, pay later by bank transfer"
-                    )}
-                  </button>
+                  {BANK_TRANSFER_ENABLED && (
+                    <button
+                      type="button"
+                      disabled={loading || payingOnline}
+                      onClick={handleReserveBankTransfer}
+                      className={
+                        AFS_PAYMENTS_ENABLED
+                          ? "flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-spire-gray transition-colors hover:border-spire-blue hover:text-spire-navy disabled:opacity-70"
+                          : "flex w-full items-center justify-center gap-2 rounded-lg bg-spire-navy px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-spire-navy-dark disabled:opacity-70"
+                      }
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Reserving…
+                        </>
+                      ) : (
+                        "Reserve now, pay later by bank transfer"
+                      )}
+                    </button>
+                  )}
                 </form>
               </motion.div>
             )}
