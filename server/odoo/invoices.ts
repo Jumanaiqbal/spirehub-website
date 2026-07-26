@@ -97,6 +97,15 @@ function formatDurationLabel(durationMinutes: number): string {
   return hours === 1 ? "1 hr" : `${hours} hrs`;
 }
 
+/** Today's date (YYYY-MM-DD) in the hub's local timezone, not UTC. */
+function hubLocalDate(utcOffsetHours: number): string {
+  const shifted = new Date(Date.now() + utcOffsetHours * 3_600_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(
+    shifted.getUTCDate()
+  )}`;
+}
+
 export async function createAndPayBookingInvoice(
   odoo: OdooEnv,
   invoiceEnv: InvoiceEnv,
@@ -117,10 +126,18 @@ export async function createAndPayBookingInvoice(
     year: "numeric",
   })}, ${payload.time}-${endTime} (${formatDurationLabel(payload.durationMinutes)})`;
 
+  // The booking is already paid via AFS, so the invoice is issued and due
+  // today. Odoo refuses to post a receivable line with no due date ("Any
+  // journal item on a receivable account must have a due date and vice
+  // versa."), which previously left paid bookings with no invoice.
+  const invoiceDate = hubLocalDate(odoo.utcOffsetHours);
+
   const invoiceId = await create(odoo, "account.move", {
     move_type: "out_invoice",
     partner_id: payload.partnerId,
     journal_id: invoiceEnv.invoiceJournalId,
+    invoice_date: invoiceDate,
+    invoice_date_due: invoiceDate,
     invoice_line_ids: [
       [
         0,
