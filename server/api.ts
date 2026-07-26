@@ -15,7 +15,14 @@ import {
   registerForOdooEvent,
 } from "./odoo/events";
 import { createAndPayBookingInvoice, getInvoiceEnv } from "./odoo/invoices";
-import { createAfsCheckout, getAfsEnv, isAfsConfigured, verifyAfsPayment } from "./afs/client";
+import {
+  createAfsCheckout,
+  getAfsEnv,
+  isAfsConfigured,
+  isTestModeCode,
+  verifyAfsPayment,
+} from "./afs/client";
+import { errorMessage, logPayment } from "./paymentLog";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -229,9 +236,30 @@ export async function handleOdooApi(
       const merchantTransactionId = `SH${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
       const afs = getAfsEnv(env);
-      const checkout = await createAfsCheckout(afs, {
-        amount: amount.toFixed(2),
+      let checkout;
+      try {
+        checkout = await createAfsCheckout(afs, {
+          amount: amount.toFixed(2),
+          merchantTransactionId,
+        });
+      } catch (error) {
+        logPayment("checkout.failed", {
+          merchantTransactionId,
+          roomId,
+          durationMinutes,
+          amountBhd: amount,
+          error: errorMessage(error),
+        });
+        throw error;
+      }
+
+      logPayment("checkout.created", {
         merchantTransactionId,
+        checkoutId: checkout.checkoutId,
+        roomId,
+        durationMinutes,
+        amountBhd: amount,
+        gateway: afs.baseUrl,
       });
 
       sendJson(res, 200, {
@@ -260,6 +288,26 @@ export async function handleOdooApi(
       const afs = getAfsEnv(env);
       const result = await verifyAfsPayment(afs, resourcePath);
 
+      logPayment("verify.result", {
+        success: result.success,
+        pending: result.pending,
+        code: result.code,
+        description: result.description,
+        amountCharged: result.amount,
+        currency: result.currency,
+        paymentType: result.paymentType,
+        merchantTransactionId: result.merchantTransactionId,
+        email: body.email,
+      });
+
+      if (isTestModeCode(result.code)) {
+        logPayment("verify.WARNING.test-mode", {
+          merchantTransactionId: result.merchantTransactionId,
+          code: result.code,
+          note: "AFS returned a TEST-MODE success code — the card was never really charged. Check AFS_BASE_URL / entity mode on the server.",
+        });
+      }
+
       if (!result.success) {
         sendJson(res, 200, {
           success: false,
@@ -274,6 +322,17 @@ export async function handleOdooApi(
       const pricing = findRoomPricing(roomId);
       const hourlyRate = pricing?.hourlyRate ?? 5.5;
       const amount = calculateBookingTotal(hourlyRate, durationMinutes);
+
+      if (result.amount && Number(result.amount) !== amount) {
+        logPayment("verify.WARNING.amount-mismatch", {
+          merchantTransactionId: result.merchantTransactionId,
+          amountCharged: result.amount,
+          amountExpected: amount.toFixed(2),
+          roomId,
+          durationMinutes,
+          note: "AFS charged a different amount than this booking's price — reconcile before honouring the booking.",
+        });
+      }
 
       const bookingPayload = {
         roomId,
@@ -293,9 +352,20 @@ export async function handleOdooApi(
 
       const booking = await createOdooBooking(odoo, bookingPayload);
 
+      logPayment("booking.created", {
+        merchantTransactionId: result.merchantTransactionId,
+        bookingId: booking.id,
+        bookingName: booking.name,
+        roomId,
+        date: body.date,
+        time: body.time,
+        durationMinutes,
+        amountBhd: amount,
+      });
+
       try {
         const partnerId = await findOrCreatePartner(odoo, bookingPayload);
-        await createAndPayBookingInvoice(odoo, getInvoiceEnv(env), {
+        const invoice = await createAndPayBookingInvoice(odoo, getInvoiceEnv(env), {
           partnerId,
           roomName: String(body.roomName ?? "Meeting Room"),
           isWorkshop: pricing?.isWorkshop ?? false,
@@ -305,9 +375,22 @@ export async function handleOdooApi(
           totalBhd: amount,
           paymentReference: result.merchantTransactionId ?? "",
         });
-      } catch {
+        logPayment("invoice.created", {
+          merchantTransactionId: result.merchantTransactionId,
+          invoiceId: invoice.invoiceId,
+          invoiceName: invoice.invoiceName,
+          totalBhd: amount,
+        });
+      } catch (error) {
         // Booking already succeeded and the guest is confirmed — invoicing
         // failures shouldn't block the response. Spire team can invoice manually.
+        logPayment("invoice.FAILED", {
+          merchantTransactionId: result.merchantTransactionId,
+          bookingId: booking.id,
+          totalBhd: amount,
+          error: errorMessage(error),
+          note: "Guest is booked and charged but has no invoice — create it manually in Odoo.",
+        });
       }
 
       sendJson(res, 201, { success: true, booking });
@@ -419,6 +502,11 @@ export async function handleOdooApi(
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Odoo error";
+    if (path.startsWith("/api/payments/")) {
+      // A failure here can mean the guest was charged but got no booking —
+      // it must always leave a trace in the payment log.
+      logPayment("payments.ERROR", { path, error: message });
+    }
     const status = message.includes("no longer available") ? 409 : 500;
     sendJson(res, status, { error: message });
     return true;

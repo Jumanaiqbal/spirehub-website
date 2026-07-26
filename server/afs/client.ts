@@ -74,8 +74,19 @@ export interface AfsPaymentResult {
   code: string;
   description: string;
   amount?: string;
+  currency?: string;
+  paymentType?: string;
   merchantTransactionId?: string;
   raw?: unknown;
+}
+
+/**
+ * 000.100.1xx = "successfully processed in Merchant/Integrator Test Mode".
+ * These count as success (needed for sandbox), but no real money moves —
+ * flagged so the verify endpoint can log loudly if one shows up in production.
+ */
+export function isTestModeCode(code: string): boolean {
+  return /^000\.100\.1/.test(code);
 }
 
 export async function verifyAfsPayment(
@@ -91,6 +102,8 @@ export async function verifyAfsPayment(
   const data = (await response.json()) as {
     result?: { code?: string; description?: string };
     amount?: string;
+    currency?: string;
+    paymentType?: string;
     merchantTransactionId?: string;
   };
   const code = data.result?.code ?? "";
@@ -101,6 +114,8 @@ export async function verifyAfsPayment(
     code,
     description: data.result?.description ?? "Unknown result",
     amount: data.amount,
+    currency: data.currency,
+    paymentType: data.paymentType,
     merchantTransactionId: data.merchantTransactionId,
     raw: data,
   };
