@@ -48,7 +48,15 @@ export async function handleOdooApi(
   res: ServerResponse,
   env: Record<string, string>
 ) {
-  const url = new URL(req.url ?? "/", "http://localhost");
+  // Malformed URLs (e.g. "//host%2f.." from vulnerability scanners) make
+  // new URL() throw — outside the try below, that crashed the whole process.
+  let url: URL;
+  try {
+    url = new URL(req.url ?? "/", "http://localhost");
+  } catch {
+    sendJson(res, 400, { error: "Malformed request URL" });
+    return true;
+  }
   const path = url.pathname;
 
   if (!path.startsWith("/api/")) {
