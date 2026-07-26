@@ -103,11 +103,21 @@ export async function handleOdooApi(
     return false;
   }
 
-  if (req.method === "POST" && isRateLimited(clientIp(req))) {
-    sendJson(res, 429, {
-      error: "Too many requests — please wait a minute and try again.",
-    });
-    return true;
+  if (req.method === "POST") {
+    // Reject an oversized body up front with a clean 413. readBody keeps a
+    // streaming backstop for clients that lie about (or omit) Content-Length.
+    const declaredLength = Number(req.headers["content-length"] ?? 0);
+    if (declaredLength > MAX_BODY_BYTES) {
+      sendJson(res, 413, { error: "Request body too large" });
+      return true;
+    }
+
+    if (isRateLimited(clientIp(req))) {
+      sendJson(res, 429, {
+        error: "Too many requests — please wait a minute and try again.",
+      });
+      return true;
+    }
   }
 
   if (!isOdooConfigured(env)) {
