@@ -116,6 +116,7 @@ export function getCachedRooms(): MeetingRoom[] {
   return cachedRooms ?? fallbackRooms;
 }
 
+
 export function isOdooConnected(): boolean {
   return odooConnected;
 }

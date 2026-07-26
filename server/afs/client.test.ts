@@ -3,6 +3,7 @@ import {
   createAfsCheckout,
   getAfsEnv,
   isAfsConfigured,
+  isValidAfsResourcePath,
   verifyAfsPayment,
   type AfsEnv,
 } from "./client";
@@ -196,5 +197,28 @@ describe("verifyAfsPayment result classification", () => {
     expect(init.headers.Authorization).toBe("Bearer test-token");
     expect(result.amount).toBe("5.50");
     expect(result.merchantTransactionId).toBe("SH123");
+  });
+});
+
+describe("isValidAfsResourcePath", () => {
+  it.each([
+    "/v1/checkouts/ABC123/payment",
+    "/v1/checkouts/98A40A4398C6D1CC9B7FBD34C2E142E6.prod02-vm-tx18/payment",
+  ])("accepts real AFS path %s", (path) => {
+    expect(isValidAfsResourcePath(path)).toBe(true);
+  });
+
+  it.each([
+    "", // missing
+    "@evil.com/v1/checkouts/x/payment", // host hijack via userinfo
+    "https://evil.com/v1/checkouts/x/payment", // absolute URL
+    "//evil.com/v1/checkouts/x/payment", // protocol-relative
+    "/v1/checkouts/../../secrets/payment", // traversal (leading dot)
+    "/v1/checkouts/ABC123/payment?x=1", // query smuggling
+    "/v1/checkouts/ABC123/payment/extra", // extra segment
+    "/v2/checkouts/ABC123/payment", // wrong version
+    "/v1/checkouts/ABC@evil/payment", // @ inside id
+  ])("rejects %s", (path) => {
+    expect(isValidAfsResourcePath(path)).toBe(false);
   });
 });

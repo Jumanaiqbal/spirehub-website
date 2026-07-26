@@ -20,22 +20,62 @@ import {
   getAfsEnv,
   isAfsConfigured,
   isTestModeCode,
+  isValidAfsResourcePath,
   verifyAfsPayment,
 } from "./afs/client";
 import { errorMessage, logPayment } from "./paymentLog";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
+// Largest legitimate payload (event registration with answers) is ~2 KB;
+// the cap only exists to stop memory-exhaustion via giant bodies.
+const MAX_BODY_BYTES = 64 * 1024;
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
+    let bytes = 0;
     req.on("data", (chunk) => {
+      bytes += chunk.length;
+      if (bytes > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error("Request body too large"));
+        return;
+      }
       data += chunk;
     });
     req.on("end", () => resolve(data));
     req.on("error", reject);
   });
 }
+
+function clientIp(req: IncomingMessage): string {
+  const forwarded = String(req.headers["x-forwarded-for"] ?? "")
+    .split(",")[0]
+    .trim();
+  return forwarded || req.socket.remoteAddress || "unknown";
+}
+
+// Best-effort abuse guard: cap POSTs per IP per minute. In-memory on purpose —
+// a single pm2 fork serves the site, and losing counts on restart is harmless.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX_POSTS = 20;
+const postHits = new Map<string, number[]>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  if (postHits.size > 10_000) postHits.clear();
+  const recent = (postHits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  const limited = recent.length >= RATE_MAX_POSTS;
+  if (!limited) recent.push(now);
+  postHits.set(ip, recent);
+  return limited;
+}
+
+// One successful card payment must create exactly one booking — a replayed
+// verify call for the same AFS transaction is rejected. In-memory: a replay
+// across a server restart is possible but shows up in payments.log.
+const processedPayments = new Set<string>();
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
   res.statusCode = status;
@@ -61,6 +101,13 @@ export async function handleOdooApi(
 
   if (!path.startsWith("/api/")) {
     return false;
+  }
+
+  if (req.method === "POST" && isRateLimited(clientIp(req))) {
+    sendJson(res, 429, {
+      error: "Too many requests — please wait a minute and try again.",
+    });
+    return true;
   }
 
   if (!isOdooConfigured(env)) {
@@ -268,6 +315,7 @@ export async function handleOdooApi(
         durationMinutes,
         amountBhd: amount,
         gateway: afs.baseUrl,
+        ip: clientIp(req),
       });
 
       sendJson(res, 200, {
@@ -287,9 +335,11 @@ export async function handleOdooApi(
 
       const body = JSON.parse(await readBody(req));
       const resourcePath = String(body.resourcePath ?? "");
+      const ip = clientIp(req);
 
-      if (!resourcePath) {
-        sendJson(res, 400, { error: "resourcePath is required" });
+      if (!isValidAfsResourcePath(resourcePath)) {
+        logPayment("verify.REJECTED.bad-resource-path", { resourcePath, ip });
+        sendJson(res, 400, { error: "Invalid resourcePath" });
         return true;
       }
 
@@ -306,6 +356,7 @@ export async function handleOdooApi(
         paymentType: result.paymentType,
         merchantTransactionId: result.merchantTransactionId,
         email: body.email,
+        ip,
       });
 
       if (isTestModeCode(result.code)) {
@@ -331,16 +382,55 @@ export async function handleOdooApi(
       const hourlyRate = pricing?.hourlyRate ?? 5.5;
       const amount = calculateBookingTotal(hourlyRate, durationMinutes);
 
+      // The booking details are client-supplied, so the price they imply must
+      // match what AFS actually charged — otherwise a small payment could be
+      // replayed into a big booking.
       if (result.amount && Number(result.amount) !== amount) {
-        logPayment("verify.WARNING.amount-mismatch", {
+        logPayment("verify.REJECTED.amount-mismatch", {
           merchantTransactionId: result.merchantTransactionId,
           amountCharged: result.amount,
           amountExpected: amount.toFixed(2),
           roomId,
           durationMinutes,
-          note: "AFS charged a different amount than this booking's price — reconcile before honouring the booking.",
+          ip,
         });
+        sendJson(res, 200, {
+          success: false,
+          message:
+            "The charged amount did not match this booking's price. Please contact Spire Hub — do not pay again.",
+        });
+        return true;
       }
+
+      if (result.currency && result.currency !== afs.currency) {
+        logPayment("verify.REJECTED.currency-mismatch", {
+          merchantTransactionId: result.merchantTransactionId,
+          currencyCharged: result.currency,
+          currencyExpected: afs.currency,
+          ip,
+        });
+        sendJson(res, 200, {
+          success: false,
+          message:
+            "The payment currency did not match. Please contact Spire Hub — do not pay again.",
+        });
+        return true;
+      }
+
+      const paymentKey = result.merchantTransactionId ?? resourcePath;
+      if (processedPayments.has(paymentKey)) {
+        logPayment("verify.REJECTED.duplicate", {
+          merchantTransactionId: result.merchantTransactionId,
+          ip,
+        });
+        sendJson(res, 200, {
+          success: false,
+          message:
+            "This payment was already processed. If you don't see a booking confirmation, contact Spire Hub — do not pay again.",
+        });
+        return true;
+      }
+      processedPayments.add(paymentKey);
 
       const bookingPayload = {
         roomId,
@@ -515,7 +605,11 @@ export async function handleOdooApi(
       // it must always leave a trace in the payment log.
       logPayment("payments.ERROR", { path, error: message });
     }
-    const status = message.includes("no longer available") ? 409 : 500;
+    const status = message.includes("no longer available")
+      ? 409
+      : message.includes("body too large")
+        ? 413
+        : 500;
     sendJson(res, status, { error: message });
     return true;
   }

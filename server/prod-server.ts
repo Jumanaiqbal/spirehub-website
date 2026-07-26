@@ -65,6 +65,12 @@ function serveFile(filePath: string, res: import("node:http").ServerResponse) {
 }
 
 const server = createServer(async (req, res) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
   const env = loadEnv();
 
   const handled = await handleOdooApi(req, res, env);

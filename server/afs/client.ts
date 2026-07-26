@@ -89,6 +89,19 @@ export function isTestModeCode(code: string): boolean {
   return /^000\.100\.1/.test(code);
 }
 
+/**
+ * resourcePath must look exactly like what AFS hands back
+ * ("/v1/checkouts/<id>/payment"). It is client-supplied and gets concatenated
+ * onto baseUrl, so anything looser lets a crafted value (e.g. "@evil.com/x")
+ * steer the status request — carrying our Authorization header — to a host
+ * the attacker controls.
+ */
+const RESOURCE_PATH_FORMAT = /^\/v1\/checkouts\/[A-Za-z0-9][A-Za-z0-9.-]*\/payment$/;
+
+export function isValidAfsResourcePath(resourcePath: string): boolean {
+  return RESOURCE_PATH_FORMAT.test(resourcePath);
+}
+
 export async function verifyAfsPayment(
   afs: AfsEnv,
   resourcePath: string
