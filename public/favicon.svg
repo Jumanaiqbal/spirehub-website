@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#1a365d"/>
-  <text x="16" y="22" text-anchor="middle" fill="#0057FF" font-family="system-ui,sans-serif" font-size="14" font-weight="700">s</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <rect width="100" height="100" rx="22" fill="#ffffff"/>
+  <!-- Spire upward arrow (the "i" in the wordmark) -->
+  <path d="M50 14 L74 43 H57 V70 a7 7 0 0 1 -14 0 V43 H26 Z" fill="#013cc8"/>
+  <!-- red dot -->
+  <circle cx="50" cy="82" r="7" fill="#ff2411"/>
 </svg>
