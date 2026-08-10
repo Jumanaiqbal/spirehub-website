@@ -53,6 +53,12 @@ const ROOM_IMAGE_OVERRIDES: Record<number, string> = {
   3: "/rooms/meeting-room-2.jpeg",
 };
 
+/**
+ * Odoo rooms that exist in the backend but must never be offered on the website.
+ * 4 = "Coffee shop long table - open area" (walk-in space, not a bookable room).
+ */
+const HIDDEN_ROOM_IDS = new Set<number>([4]);
+
 function stripHtml(html: string): string {
   return html
     .replace(/<[^>]+>/g, " ")
@@ -76,21 +82,23 @@ export async function listOdooRooms(odoo: OdooEnv): Promise<OdooRoom[]> {
   const fields = roomFields(odoo);
   const records = await searchRead(odoo, odoo.roomModel, [], fields);
 
-  return records.map((record) => {
-    const id = Number(record.id);
-    const rawDescription = record.description ? String(record.description) : "";
-    return {
-      id,
-      name: String(record.name ?? "Meeting Room"),
-      shortCode: record.short_code ? String(record.short_code) : undefined,
-      description: rawDescription ? stripHtml(rawDescription) : undefined,
-      capacity: 8,
-      bookingUrl: record.room_booking_url ? String(record.room_booking_url) : undefined,
-      imageUrl:
-        ROOM_IMAGE_OVERRIDES[id] ??
-        (record.room_background_image ? buildImageUrl(odoo, id) : undefined),
-    };
-  });
+  return records
+    .filter((record) => !HIDDEN_ROOM_IDS.has(Number(record.id)))
+    .map((record) => {
+      const id = Number(record.id);
+      const rawDescription = record.description ? String(record.description) : "";
+      return {
+        id,
+        name: String(record.name ?? "Meeting Room"),
+        shortCode: record.short_code ? String(record.short_code) : undefined,
+        description: rawDescription ? stripHtml(rawDescription) : undefined,
+        capacity: 8,
+        bookingUrl: record.room_booking_url ? String(record.room_booking_url) : undefined,
+        imageUrl:
+          ROOM_IMAGE_OVERRIDES[id] ??
+          (record.room_background_image ? buildImageUrl(odoo, id) : undefined),
+      };
+    });
 }
 
 async function findConflictingRoomIds(
@@ -171,6 +179,10 @@ export async function createOdooBooking(
   odoo: OdooEnv,
   payload: OdooBookingPayload
 ): Promise<{ id: number; name: string; paymentStatus: "paid" | typeof WEBSITE_PAYMENT_STATUS }> {
+  if (HIDDEN_ROOM_IDS.has(payload.roomId)) {
+    throw new Error("This room is not available for booking online.");
+  }
+
   const available = await checkOdooRoomAvailability(
     odoo,
     payload.roomId,
