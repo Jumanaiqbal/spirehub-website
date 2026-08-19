@@ -11,6 +11,16 @@ export interface CheckoutResult {
 export async function createCheckout(params: {
   roomId: string;
   durationMinutes: number;
+  // Optional customer/booking context so the server can alert the team if the
+  // checkout is later abandoned. Not required to start a payment.
+  roomName?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  date?: string;
+  time?: string;
+  layout?: string;
 }): Promise<CheckoutResult> {
   const response = await fetchWithTimeout("/api/payments/checkout", {
     method: "POST",
@@ -18,6 +28,14 @@ export async function createCheckout(params: {
     body: JSON.stringify({
       roomId: Number(params.roomId),
       durationMinutes: params.durationMinutes,
+      roomName: params.roomName,
+      name: params.name,
+      email: params.email,
+      phone: params.phone,
+      company: params.company,
+      date: params.date,
+      time: params.time,
+      layout: params.layout,
     }),
   });
   const data = await response.json();

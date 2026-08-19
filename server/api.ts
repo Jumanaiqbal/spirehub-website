@@ -25,7 +25,8 @@ import {
 } from "./afs/client";
 import { errorMessage, logPayment } from "./paymentLog";
 import { sendWhatsAppTemplate, toBahrainE164 } from "./odoo/whatsapp";
-import { sendAdminBookingEmail } from "./odoo/notify";
+import { sendAdminBookingEmail, sendCheckoutAlertEmail } from "./odoo/notify";
+import type { OdooEnv } from "./odoo/client";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -78,6 +79,47 @@ function isRateLimited(ip: string): boolean {
 // verify call for the same AFS transaction is rejected. In-memory: a replay
 // across a server restart is possible but shows up in payments.log.
 const processedPayments = new Set<string>();
+
+// Abandoned-checkout tracking. Each started checkout is held here with the
+// customer's details; the verify step clears it, and a periodic sweep emails
+// the team about any that sat past the window unpaid. In-memory on purpose —
+// a restart just means pending ones aren't alerted (low volume, acceptable).
+interface PendingCheckout {
+  createdAt: number;
+  odoo: OdooEnv;
+  recipients: string;
+  details: Record<string, unknown>;
+}
+const pendingCheckouts = new Map<string, PendingCheckout>();
+const ABANDON_MS = 30 * 60 * 1000;
+const SWEEP_MS = 5 * 60 * 1000;
+let sweepStarted = false;
+
+function ensureAbandonSweep() {
+  if (sweepStarted) return;
+  sweepStarted = true;
+  const timer = setInterval(() => {
+    const now = Date.now();
+    for (const [id, pc] of pendingCheckouts) {
+      if (now - pc.createdAt < ABANDON_MS) continue;
+      pendingCheckouts.delete(id);
+      sendCheckoutAlertEmail(pc.odoo, pc.recipients, {
+        kind: "abandoned",
+        merchantTransactionId: id,
+        ...pc.details,
+      })
+        .then(() => logPayment("abandoned.notified", { merchantTransactionId: id }))
+        .catch((e) =>
+          logPayment("abandoned.notify.FAILED", { merchantTransactionId: id, error: errorMessage(e) })
+        );
+    }
+  }, SWEEP_MS);
+  timer.unref?.();
+}
+
+function notifyRecipients(env: Record<string, string>): string {
+  return env.ODOO_ABANDONED_NOTIFY_EMAILS ?? "se@spire.bh,tech@spire.bh";
+}
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
   res.statusCode = status;
@@ -330,6 +372,27 @@ export async function handleOdooApi(
         ip: clientIp(req),
       });
 
+      // Track for abandoned-checkout alerting; cleared when verify runs.
+      pendingCheckouts.set(merchantTransactionId, {
+        createdAt: Date.now(),
+        odoo,
+        recipients: notifyRecipients(env),
+        details: {
+          name: body.name,
+          company: body.company,
+          email: body.email,
+          phone: body.phone,
+          roomName: body.roomName,
+          layout: body.layout,
+          date: body.date,
+          time: body.time,
+          durationMinutes,
+          amountBhd: amount,
+          ip: clientIp(req),
+        },
+      });
+      ensureAbandonSweep();
+
       sendJson(res, 200, {
         checkoutId: checkout.checkoutId,
         merchantTransactionId,
@@ -371,6 +434,10 @@ export async function handleOdooApi(
         ip,
       });
 
+      // The customer came back with a result (paid or declined) — no longer
+      // an abandoned checkout.
+      if (result.merchantTransactionId) pendingCheckouts.delete(result.merchantTransactionId);
+
       if (isTestModeCode(result.code)) {
         logPayment("verify.WARNING.test-mode", {
           merchantTransactionId: result.merchantTransactionId,
@@ -380,6 +447,35 @@ export async function handleOdooApi(
       }
 
       if (!result.success) {
+        // Not a pending 3DS step → a real decline (e.g. ReD Shield). Alert the
+        // team so they can follow up on the lost booking.
+        if (!result.pending) {
+          sendCheckoutAlertEmail(odoo, notifyRecipients(env), {
+            kind: "failed",
+            merchantTransactionId: result.merchantTransactionId,
+            name: body.name,
+            company: body.company,
+            email: body.email,
+            phone: body.phone,
+            roomName: body.roomName,
+            layout: body.layout,
+            date: body.date,
+            time: body.time,
+            durationMinutes: Number(body.duration ?? 60),
+            reason: `${result.description} (code ${result.code})`,
+            ip,
+          })
+            .then((mailId) =>
+              logPayment("failed.notified", { merchantTransactionId: result.merchantTransactionId, mailId })
+            )
+            .catch((e) =>
+              logPayment("failed.notify.FAILED", {
+                merchantTransactionId: result.merchantTransactionId,
+                error: errorMessage(e),
+              })
+            );
+        }
+
         sendJson(res, 200, {
           success: false,
           pending: result.pending,

@@ -351,6 +351,11 @@ export default function BookingModal({
       const checkout = await createCheckout({
         roomId: selectedRoom.id,
         durationMinutes: duration,
+        roomName: selectedRoom.name,
+        date,
+        time,
+        layout: selectedLayout?.label,
+        ...form,
       });
 
       setCheckoutId(checkout.checkoutId);
