@@ -118,7 +118,7 @@ function ensureAbandonSweep() {
 }
 
 function notifyRecipients(env: Record<string, string>): string {
-  return env.ODOO_ABANDONED_NOTIFY_EMAILS ?? "se@spire.bh,tech@spire.bh";
+  return env.ODOO_ABANDONED_NOTIFY_EMAILS ?? "se@spire.bh,tech@spire.bh,hub@spire.bh";
 }
 
 function sendJson(res: ServerResponse, status: number, payload: unknown) {
@@ -572,7 +572,7 @@ export async function handleOdooApi(
       // Alert the Spire team so they can prepare the room. Isolated + logged
       // so a mail failure never affects the booking or the guest response.
       try {
-        const adminEmail = env.ODOO_ADMIN_NOTIFY_EMAIL ?? "se@spire.bh";
+        const adminEmail = env.ODOO_ADMIN_NOTIFY_EMAIL ?? "se@spire.bh,hub@spire.bh";
         const adminMailId = await sendAdminBookingEmail(odoo, adminEmail, {
           name: body.name,
           company: body.company,
