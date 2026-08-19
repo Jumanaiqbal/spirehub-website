@@ -24,6 +24,7 @@ import {
   verifyAfsPayment,
 } from "./afs/client";
 import { errorMessage, logPayment } from "./paymentLog";
+import { sendWhatsAppTemplate, toBahrainE164 } from "./odoo/whatsapp";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -489,6 +490,40 @@ export async function handleOdooApi(
           invoiceName: invoice.invoiceName,
           totalBhd: amount,
         });
+
+        // Send the invoice to the customer's WhatsApp via the approved Odoo
+        // template. Isolated so a WhatsApp failure never affects the booking,
+        // and always logged so it can never fail silently (unlike email did).
+        try {
+          const waPhone = toBahrainE164(body.phone);
+          if (!waPhone) {
+            logPayment("whatsapp.skipped", {
+              merchantTransactionId: result.merchantTransactionId,
+              invoiceId: invoice.invoiceId,
+              reason: "no usable phone number",
+            });
+          } else {
+            const waTemplateId = Number(env.ODOO_WHATSAPP_INVOICE_TEMPLATE_ID ?? 3);
+            const waMessageId = await sendWhatsAppTemplate(odoo, {
+              resModel: "account.move",
+              resId: invoice.invoiceId,
+              templateId: waTemplateId,
+              phone: waPhone,
+            });
+            logPayment("whatsapp.sent", {
+              merchantTransactionId: result.merchantTransactionId,
+              invoiceId: invoice.invoiceId,
+              phone: waPhone,
+              waMessageId,
+            });
+          }
+        } catch (waError) {
+          logPayment("whatsapp.FAILED", {
+            merchantTransactionId: result.merchantTransactionId,
+            invoiceId: invoice.invoiceId,
+            error: errorMessage(waError),
+          });
+        }
       } catch (error) {
         // Booking already succeeded and the guest is confirmed — invoicing
         // failures shouldn't block the response. Spire team can invoice manually.
