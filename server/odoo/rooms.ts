@@ -211,9 +211,13 @@ export async function createOdooBooking(
     .filter(Boolean)
     .join(" — ");
 
+  // Surface the room setup/layout right in the booking name so the team
+  // preparing the room sees it on the calendar at a glance — the booking
+  // model has no other visible field for it (only the chatter note).
+  const setupLabel = payload.layout ? ` ${payload.layout} —` : "";
   const bookingName = payload.paid
-    ? `[PAID] Website — ${guestDetails}`
-    : `[NOT PAID] Website — ${guestDetails}`;
+    ? `[PAID]${setupLabel} Website — ${guestDetails}`
+    : `[NOT PAID]${setupLabel} Website — ${guestDetails}`;
 
   try {
     await findOrCreatePartner(odoo, payload);
