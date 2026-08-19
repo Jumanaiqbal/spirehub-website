@@ -25,6 +25,7 @@ import {
 } from "./afs/client";
 import { errorMessage, logPayment } from "./paymentLog";
 import { sendWhatsAppTemplate, toBahrainE164 } from "./odoo/whatsapp";
+import { sendAdminBookingEmail } from "./odoo/notify";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -471,6 +472,39 @@ export async function handleOdooApi(
         durationMinutes,
         amountBhd: amount,
       });
+
+      // Alert the Spire team so they can prepare the room. Isolated + logged
+      // so a mail failure never affects the booking or the guest response.
+      try {
+        const adminEmail = env.ODOO_ADMIN_NOTIFY_EMAIL ?? "se@spire.bh";
+        const adminMailId = await sendAdminBookingEmail(odoo, adminEmail, {
+          name: body.name,
+          company: body.company,
+          email: body.email,
+          phone: body.phone,
+          roomName: String(body.roomName ?? "Meeting Room"),
+          layout: body.layout,
+          date: body.date,
+          time: body.time,
+          durationMinutes,
+          amountBhd: amount,
+          paymentReference: result.merchantTransactionId,
+          notes: body.notes,
+          bookingName: booking.name,
+        });
+        logPayment("admin.notified", {
+          merchantTransactionId: result.merchantTransactionId,
+          bookingId: booking.id,
+          adminEmail,
+          adminMailId,
+        });
+      } catch (adminError) {
+        logPayment("admin.notify.FAILED", {
+          merchantTransactionId: result.merchantTransactionId,
+          bookingId: booking.id,
+          error: errorMessage(adminError),
+        });
+      }
 
       try {
         const partnerId = await findOrCreatePartner(odoo, bookingPayload);

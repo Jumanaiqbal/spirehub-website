@@ -25,6 +25,7 @@ const SERVER_ENV_KEYS = [
   "ODOO_MEETING_ROOM_PRODUCT_ID",
   "ODOO_WORKSHOP_ROOM_PRODUCT_ID",
   "ODOO_WHATSAPP_INVOICE_TEMPLATE_ID",
+  "ODOO_ADMIN_NOTIFY_EMAIL",
 ] as const;
 
 function loadEnv(): Record<string, string> {
