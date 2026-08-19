@@ -94,7 +94,7 @@ export default function Events() {
                 <button
                   type="button"
                   onClick={() => setRegisteringEvent(event)}
-                  className="mt-3 flex items-center gap-1 text-sm font-medium text-spire-blue transition-colors hover:text-spire-navy"
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg bg-spire-blue px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-spire-navy"
                 >
                   Register
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
