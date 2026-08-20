@@ -60,11 +60,17 @@ export async function fetchUpcomingEvents(): Promise<SpireEvent[]> {
 export async function registerForEvent(
   registration: EventRegistration
 ): Promise<{ registrationId: number; barcode?: string }> {
-  const response = await fetchWithTimeout("/api/events/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(registration),
-  });
+  const response = await fetchWithTimeout(
+    "/api/events/register",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(registration),
+    },
+    // Registration + Odoo ticket generation can be slow; give it room before
+    // treating it as a timeout.
+    25_000
+  );
   const data = await response.json();
 
   if (!response.ok) {

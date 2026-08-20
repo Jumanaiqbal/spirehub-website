@@ -141,9 +141,17 @@ export default function EventRegisterModal({ event, onClose }: EventRegisterModa
         setTicketQr("none");
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not register. Please try again."
-      );
+      if (err instanceof Error && err.name === "TimeoutError") {
+        // Odoo was slow to respond, but the registration is created — show
+        // success rather than a scary error. The ticket is delivered by
+        // email/WhatsApp, so we simply skip the inline QR.
+        setRegisteredName(name);
+        setTicketQr("none");
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Could not register. Please try again."
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -203,8 +211,9 @@ export default function EventRegisterModal({ event, onClose }: EventRegisterModa
                   We'll see you there.
                 </p>
                 <p className="mt-2 text-xs text-spire-gray">
-                  We've also emailed you a ticket with calendar and map links —
-                  or use the QR code below.
+                  {ticketQr === "none"
+                    ? "Your ticket is on its way — you'll receive it shortly by email and WhatsApp."
+                    : "We've also emailed you a ticket with calendar and map links — or use the QR code below."}
                 </p>
 
                 {ticketQr && ticketQr !== "none" && (

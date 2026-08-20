@@ -276,14 +276,23 @@ export async function registerForOdooEvent(
     ...(answerTuples.length > 0 ? { registration_answer_ids: answerTuples } : {}),
   });
 
-  const created = await searchRead(
-    odoo,
-    "event.registration",
-    [["id", "=", registrationId]],
-    ["barcode"],
-    1
-  );
+  // The registration is already created above — that's what matters. Reading
+  // back the barcode is best-effort: if Odoo is slow or errors here, don't fail
+  // the whole registration. The attendee still gets their ticket via Odoo's
+  // email/WhatsApp automation.
+  let barcode: string | undefined;
+  try {
+    const created = await searchRead(
+      odoo,
+      "event.registration",
+      [["id", "=", registrationId]],
+      ["barcode"],
+      1
+    );
+    barcode = created[0]?.barcode ? String(created[0].barcode) : undefined;
+  } catch {
+    barcode = undefined;
+  }
 
-  const barcode = created[0]?.barcode ? String(created[0].barcode) : undefined;
   return { id: registrationId, barcode };
 }
