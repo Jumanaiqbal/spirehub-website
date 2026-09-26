@@ -8,7 +8,11 @@ import {
   listOdooRooms,
   testOdooConnection,
 } from "./odoo/rooms";
-import { createMentorApplication, createOdooLead } from "./odoo/leads";
+import {
+  createMentorApplication,
+  createOdooLead,
+  INTEREST_LABELS as LEAD_INTEREST_LABELS,
+} from "./odoo/leads";
 import {
   getOdooEventImage,
   listUpcomingOdooEvents,
@@ -25,7 +29,7 @@ import {
 } from "./afs/client";
 import { errorMessage, logPayment } from "./paymentLog";
 import { sendWhatsAppTemplate, toBahrainE164 } from "./odoo/whatsapp";
-import { sendAdminBookingEmail, sendCheckoutAlertEmail } from "./odoo/notify";
+import { sendAdminBookingEmail, sendCheckoutAlertEmail, sendLeadEmail } from "./odoo/notify";
 import type { OdooEnv } from "./odoo/client";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
@@ -723,6 +727,24 @@ export async function handleOdooApi(
         linkedinUrl,
       });
 
+      // Notify the team by email too (not just CRM).
+      sendLeadEmail(odoo, notifyRecipients(env), {
+        kind: "mentor",
+        name: fullName,
+        email,
+        phone,
+        details: [
+          ["Title", title],
+          ["LinkedIn", linkedinUrl],
+          ["Bio", bio],
+        ],
+        leadId: application.id,
+      })
+        .then((id) => logPayment("lead.notified", { leadId: application.id, mailId: id }))
+        .catch((e) =>
+          logPayment("lead.notify.FAILED", { leadId: application.id, error: errorMessage(e) })
+        );
+
       sendJson(res, 201, {
         success: true,
         message: "Application received — we'll be in touch soon.",
@@ -762,6 +784,20 @@ export async function handleOdooApi(
         interest,
         comments,
       });
+
+      // Also email the team — the CRM alone was going unwatched. Fire-and-forget
+      // so a mail hiccup never blocks the visitor's submission.
+      sendLeadEmail(odoo, notifyRecipients(env), {
+        kind: "inquiry",
+        name: fullName,
+        email,
+        phone,
+        interest: LEAD_INTEREST_LABELS[interest] ?? interest,
+        details: comments ? [["Comments", comments]] : [],
+        leadId: lead.id,
+      })
+        .then((id) => logPayment("lead.notified", { leadId: lead.id, mailId: id }))
+        .catch((e) => logPayment("lead.notify.FAILED", { leadId: lead.id, error: errorMessage(e) }));
 
       sendJson(res, 200, {
         success: true,

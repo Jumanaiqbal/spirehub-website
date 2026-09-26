@@ -75,6 +75,68 @@ export async function sendAdminBookingEmail(
   return mailId;
 }
 
+export interface LeadEmailDetails {
+  kind: "inquiry" | "mentor";
+  name?: string;
+  email?: string;
+  phone?: string;
+  interest?: string;
+  details?: [string, string | undefined][];
+  leadId?: number;
+}
+
+/**
+ * Email the Spire team whenever a website form creates a CRM lead, so they
+ * don't have to watch the CRM to catch new inquiries. Sent to a comma-separated
+ * recipient list via Odoo's outgoing mail server.
+ */
+export async function sendLeadEmail(
+  odoo: OdooEnv,
+  recipients: string,
+  d: LeadEmailDetails
+): Promise<number> {
+  const rows: [string, string | undefined][] = [
+    ["Name", d.name],
+    ["Email", d.email],
+    ["Phone", d.phone],
+    ["Interested in", d.interest],
+    ...(d.details ?? []),
+  ];
+
+  const tableRows = rows
+    .filter(([, v]) => v)
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:4px 12px 4px 0;color:#666;white-space:nowrap;vertical-align:top">${k}</td>` +
+        `<td style="padding:4px 0;font-weight:600">${escapeHtml(String(v))}</td></tr>`
+    )
+    .join("");
+
+  const headline =
+    d.kind === "mentor"
+      ? "A new mentor application came in through the website."
+      : "A new inquiry came in through the website form (also saved in CRM).";
+  const label = d.kind === "mentor" ? "Mentor application" : "Website inquiry";
+
+  const mailId = await create(odoo, "mail.mail", {
+    subject: `${label} — ${d.name ?? ""}${d.interest ? ` — ${d.interest}` : ""}`.trim(),
+    body_html:
+      `<p>${headline}</p>` +
+      `<table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">${tableRows}</table>` +
+      (d.email
+        ? `<p style="margin-top:12px"><a href="mailto:${escapeHtml(d.email)}">Reply to ${escapeHtml(
+            d.name ?? d.email
+          )}</a></p>`
+        : ""),
+    email_to: recipients,
+    email_from: "hub@spire.bh",
+    auto_delete: false,
+  });
+
+  await executeKw(odoo, "mail.mail", "send", [[mailId]]);
+  return mailId;
+}
+
 export interface CheckoutAlertDetails {
   kind: "abandoned" | "failed";
   merchantTransactionId?: string;

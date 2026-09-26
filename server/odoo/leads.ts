@@ -9,7 +9,7 @@ export interface OdooLeadPayload {
   comments?: string;
 }
 
-const INTEREST_LABELS: Record<string, string> = {
+export const INTEREST_LABELS: Record<string, string> = {
   coworking: "Coworking space",
   offices: "Private offices",
   "meeting-rooms": "Meeting rooms",
