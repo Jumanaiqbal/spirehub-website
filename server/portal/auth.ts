@@ -35,6 +35,11 @@ export function getPortalEnv(env: Record<string, string>): PortalEnv {
 
 export interface PortalSession {
   partnerId: number;
+  /** The customer's commercial partner (the company that holds the contract).
+   * Equals partnerId for individuals. Subscriptions and invoices are scoped to
+   * this across the company and its contacts, so a child contact (e.g. a named
+   * employee) sees their company's membership and invoices. */
+  commercialPartnerId?: number;
   name: string;
   email: string;
   exp: number;

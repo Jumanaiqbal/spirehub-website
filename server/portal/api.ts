@@ -96,12 +96,29 @@ export async function handlePortalApi(
       partnerId = Number(pid);
     }
 
-    // Gate: only customers with an ACTIVE subscription may use the portal.
-    // (The test login is exempt so the demo always works.)
+    const [partner] = await searchRead(
+      odoo,
+      "res.partner",
+      [["id", "=", partnerId]],
+      ["name", "email", "commercial_partner_id"],
+      1
+    );
+    if (!partner) {
+      sendJson(res, 500, { error: "Customer not found in Odoo." });
+      return true;
+    }
+    // The company that holds the contract (equals partnerId for individuals).
+    const commercialPartnerId = Array.isArray(partner.commercial_partner_id)
+      ? Number(partner.commercial_partner_id[0])
+      : partnerId;
+
+    // Gate: only customers with an ACTIVE subscription may use the portal. The
+    // subscription usually sits on the company, so we match it and all its
+    // contacts via child_of. (The test login is exempt so the demo works.)
     if (!isTestLogin) {
       const activeSubs = await executeKw<number>(odoo, "sale.order", "search_count", [
         [
-          ["partner_id", "=", partnerId],
+          ["partner_id", "child_of", commercialPartnerId],
           ["is_subscription", "=", true],
           ["subscription_state", "=", "3_progress"],
         ],
@@ -115,20 +132,9 @@ export async function handlePortalApi(
       }
     }
 
-    const [partner] = await searchRead(
-      odoo,
-      "res.partner",
-      [["id", "=", partnerId]],
-      ["name", "email"],
-      1
-    );
-    if (!partner) {
-      sendJson(res, 500, { error: "Customer not found in Odoo." });
-      return true;
-    }
-
     const session = {
       partnerId,
+      commercialPartnerId,
       name: String(partner.name ?? ""),
       email: String(partner.email ?? ""),
     };
@@ -237,7 +243,7 @@ export async function handlePortalApi(
       return true;
     }
 
-    const invs = await loadPayableInvoices(odoo, session.partnerId, ids);
+    const invs = await loadPayableInvoices(odoo, scopePartnerId(session), ids);
     // Every requested invoice must belong to this member and still be payable.
     if (invs.length !== ids.length) {
       sendJson(res, 404, { error: "One or more invoices were not found or are already paid." });
@@ -297,7 +303,7 @@ export async function handlePortalApi(
       return true;
     }
 
-    const invs = await loadPayableInvoices(odoo, session.partnerId, ids);
+    const invs = await loadPayableInvoices(odoo, scopePartnerId(session), ids);
     if (!invs.length) {
       sendJson(res, 404, { error: "Invoices not found." });
       return true;
@@ -393,6 +399,12 @@ export async function handlePortalApi(
   return true;
 }
 
+/** The partner whose documents the session may see: the commercial partner
+ * (company) across all its contacts, falling back to the individual. */
+function scopePartnerId(session: PortalSession): number {
+  return session.commercialPartnerId ?? session.partnerId;
+}
+
 /** Accept either a single invoiceId or an array of invoiceIds; dedupe + clean. */
 function normalizeInvoiceIds(body: { invoiceIds?: number[]; invoiceId?: number }): number[] {
   const raw = Array.isArray(body.invoiceIds)
@@ -403,14 +415,15 @@ function normalizeInvoiceIds(body: { invoiceIds?: number[]; invoiceId?: number }
   return [...new Set(raw.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
 }
 
-/** Load the member's OWN posted invoices with an outstanding balance. */
-async function loadPayableInvoices(odoo: OdooEnv, partnerId: number, ids: number[]) {
+/** Load the member's OWN posted invoices with an outstanding balance.
+ * `scopeId` is the commercial partner, matched across all its contacts. */
+async function loadPayableInvoices(odoo: OdooEnv, scopeId: number, ids: number[]) {
   const rows = await searchRead(
     odoo,
     "account.move",
     [
       ["id", "in", ids],
-      ["partner_id", "=", partnerId],
+      ["partner_id", "child_of", scopeId],
       ["move_type", "=", "out_invoice"],
       ["state", "=", "posted"],
       ["amount_residual", ">", 0],
@@ -430,7 +443,7 @@ async function invoicesFor(odoo: OdooEnv, session: PortalSession, env: Record<st
     odoo,
     "account.move",
     [
-      ["partner_id", "=", session.partnerId],
+      ["partner_id", "child_of", scopePartnerId(session)],
       ["move_type", "=", "out_invoice"],
       ["state", "=", "posted"],
     ],
@@ -478,7 +491,7 @@ async function subscriptionsFor(odoo: OdooEnv, session: PortalSession) {
     odoo,
     "sale.order",
     [
-      ["partner_id", "=", session.partnerId],
+      ["partner_id", "child_of", scopePartnerId(session)],
       ["is_subscription", "=", true],
     ],
     ["name", "plan_id", "subscription_state", "next_invoice_date", "recurring_total", "amount_total", "currency_id"],
