@@ -80,6 +80,7 @@ export default function Events() {
                 <img
                   src={event.imageUrl ?? FALLBACK_IMAGE}
                   alt={event.name}
+                  loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <span className="absolute left-4 top-4 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-spire-navy shadow-sm">

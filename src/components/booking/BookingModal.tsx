@@ -27,6 +27,7 @@ import {
 } from "../../services/payments";
 import { paymentDetails, hasPaymentDetails } from "../../config/paymentDetails";
 import { formatBhd, getBookingSummary } from "../../utils/pricing";
+import { isLoggedIn, bookAsMember } from "../../services/portal";
 
 type Step = "rooms" | "details" | "payment" | "success";
 
@@ -96,10 +97,26 @@ export default function BookingModal({
     [selectedRoomId, rooms]
   );
 
+  const [isMember, setIsMember] = useState(false);
+  useEffect(() => {
+    setIsMember(isLoggedIn());
+  }, [open]);
+
   const bookingSummary = useMemo(() => {
     if (!selectedRoom) return null;
     return getBookingSummary(selectedRoom, duration);
   }, [selectedRoom, duration]);
+
+  // Member perks: meeting rooms are free, the workshop room is 50% off.
+  // (The server re-verifies and enforces this — the UI just reflects it.)
+  const memberFreeMeeting = Boolean(isMember && selectedRoom && !selectedRoom.isWorkshop);
+  const memberTotal = useMemo(() => {
+    if (!bookingSummary || !selectedRoom) return 0;
+    if (!isMember) return bookingSummary.total;
+    return selectedRoom.isWorkshop
+      ? Math.round(bookingSummary.total * 0.5 * 1000) / 1000
+      : 0;
+  }, [bookingSummary, selectedRoom, isMember]);
 
   const selectedLayout = useMemo(() => {
     if (!selectedRoom?.layouts?.length) return null;
@@ -329,6 +346,50 @@ export default function BookingModal({
     }
   };
 
+  // Signed-in members: meeting rooms are free (no payment) — book directly.
+  const handleMemberFreeBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRoom) return;
+
+    setPayingOnline(true);
+    setSubmitError(null);
+
+    try {
+      const booking = await bookAsMember({
+        roomId: Number(selectedRoom.odooId ?? selectedRoom.id),
+        date,
+        time,
+        durationMinutes: duration,
+        layout: selectedLayout?.label,
+        ...form,
+      });
+      setResult({
+        reference: booking.name,
+        room: selectedRoom,
+        date,
+        time,
+        duration,
+        totalBhd: 0,
+        layout: selectedLayout?.label,
+        paymentStatus: "paid",
+      });
+      setStep("success");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Could not complete your booking. Please try again."
+      );
+    } finally {
+      setPayingOnline(false);
+    }
+  };
+
+  // Route the details form: free member meeting → direct booking; otherwise
+  // (paid, or discounted workshop for members) → card payment.
+  const handleSubmit = (e: React.FormEvent) => {
+    if (memberFreeMeeting) return handleMemberFreeBooking(e);
+    return handlePayOnline(e);
+  };
+
   const handlePayOnline = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoom || !bookingSummary) return;
@@ -343,7 +404,7 @@ export default function BookingModal({
         time,
         duration,
         layout: selectedLayout?.label,
-        totalBhd: bookingSummary.total,
+        totalBhd: memberTotal,
         ...form,
       };
       sessionStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify(pending));
@@ -636,7 +697,7 @@ export default function BookingModal({
                   </div>
                 )}
 
-                <form ref={detailsFormRef} onSubmit={handlePayOnline} className="space-y-4">
+                <form ref={detailsFormRef} onSubmit={handleSubmit} className="space-y-4">
                   {submitError && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
                       {submitError}
@@ -727,6 +788,14 @@ export default function BookingModal({
                     </a>
                   </p>
 
+                  {isMember && (
+                    <p className="rounded-lg bg-spire-light px-4 py-2.5 text-xs font-medium text-spire-navy">
+                      {memberFreeMeeting
+                        ? "✓ Member perk: this meeting room is free for you."
+                        : "✓ Member perk: 50% off the workshop room applied."}
+                    </p>
+                  )}
+
                   {/* Card is now the only booking method — always show. */}
                   <button
                     type="submit"
@@ -736,12 +805,17 @@ export default function BookingModal({
                     {payingOnline ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Preparing payment…
+                        {memberFreeMeeting ? "Confirming…" : "Preparing payment…"}
+                      </>
+                    ) : memberFreeMeeting ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Confirm free booking
                       </>
                     ) : (
                       <>
                         <CreditCard className="h-4 w-4" />
-                        Pay {formatBhd(bookingSummary?.total ?? 0)} online now
+                        Pay {formatBhd(memberTotal)} online now
                       </>
                     )}
                   </button>
@@ -854,10 +928,16 @@ export default function BookingModal({
                   />
                 </div>
                 <h4 className="mt-4 text-xl font-bold text-spire-navy">
-                  {result.paymentStatus === "paid" ? "Payment successful" : "Booking requested"}
+                  {result.totalBhd === 0
+                    ? "Booking confirmed"
+                    : result.paymentStatus === "paid"
+                      ? "Payment successful"
+                      : "Booking requested"}
                 </h4>
                 <p className="mt-2 text-sm text-spire-gray">
-                  {result.paymentStatus === "paid" ? (
+                  {result.totalBhd === 0 ? (
+                    <>Your room is confirmed — free with your Spire membership. See you soon!</>
+                  ) : result.paymentStatus === "paid" ? (
                     <>Your room is confirmed and paid in full. See you soon!</>
                   ) : (
                     <>
@@ -897,10 +977,14 @@ export default function BookingModal({
                     </p>
                     <p>
                       <span className="font-medium text-spire-navy">
-                        {result.paymentStatus === "paid" ? "Amount paid:" : "Amount due:"}
+                        {result.totalBhd === 0
+                          ? "Cost:"
+                          : result.paymentStatus === "paid"
+                            ? "Amount paid:"
+                            : "Amount due:"}
                       </span>{" "}
                       <span className="font-bold text-spire-navy">
-                        {formatBhd(result.totalBhd)}
+                        {result.totalBhd === 0 ? "Free (member)" : formatBhd(result.totalBhd)}
                       </span>
                       <span className="text-xs"> (VAT incl.)</span>
                     </p>

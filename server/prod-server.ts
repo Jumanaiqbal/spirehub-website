@@ -27,6 +27,11 @@ const SERVER_ENV_KEYS = [
   "ODOO_WHATSAPP_INVOICE_TEMPLATE_ID",
   "ODOO_ADMIN_NOTIFY_EMAIL",
   "ODOO_ABANDONED_NOTIFY_EMAILS",
+  "PORTAL_JWT_SECRET",
+  "PORTAL_TEST_USER",
+  "PORTAL_TEST_PASSWORD",
+  "PORTAL_TEST_PARTNER_ID",
+  "PORTAL_ALLOW_TEST_LOGIN",
 ] as const;
 
 function loadEnv(): Record<string, string> {
@@ -88,9 +93,26 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  // SPA fallback — this is a single-page app with no client-side routes.
+  // Pre-rendered route: /coworking -> dist/coworking/index.html (vite-react-ssg
+  // emits one static HTML file per route so crawlers get real content).
+  if (candidate.startsWith(DIST_DIR)) {
+    const routeIndex = join(candidate, "index.html");
+    if (existsSync(routeIndex) && statSync(routeIndex).isFile()) {
+      serveFile(routeIndex, res);
+      return;
+    }
+  }
+
+  // Unknown path — serve the pre-rendered 404 page with a real 404 status
+  // (falling back to the home shell if it isn't built for some reason).
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache");
+  const notFoundPage = join(DIST_DIR, "404", "index.html");
+  if (existsSync(notFoundPage)) {
+    res.statusCode = 404;
+    createReadStream(notFoundPage).pipe(res);
+    return;
+  }
   createReadStream(join(DIST_DIR, "index.html")).pipe(res);
 });
 

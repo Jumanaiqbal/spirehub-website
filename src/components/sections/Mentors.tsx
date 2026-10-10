@@ -86,6 +86,7 @@ export default function Mentors() {
                       <img
                         src={mentor.image}
                         alt={mentor.name}
+                        loading="lazy"
                         className={`h-64 w-full object-cover transition-transform duration-500 group-hover:scale-105 ${
                           mentor.image.endsWith(".svg") ? "object-top" : "object-center"
                         }`}

@@ -1,8 +1,18 @@
 export const navLinks = [
-  { label: "Events", href: "#events" },
-  { label: "Mentors", href: "#mentors" },
-  { label: "Membership", href: "#membership" },
-  { label: "Meeting Rooms", href: "#meeting-rooms" },
+  { label: "Coworking", href: "/coworking" },
+  { label: "Private Offices", href: "/private-offices" },
+  { label: "Meeting Rooms", href: "/meeting-rooms" },
+  { label: "Mentorship", href: "/mentorship" },
+  { label: "Events", href: "/#events" },
+];
+
+/** Core offerings, each with its own crawlable page. */
+export const serviceLinks = [
+  { label: "Coworking Space", href: "/coworking" },
+  { label: "Private Offices", href: "/private-offices" },
+  { label: "Meeting Rooms", href: "/meeting-rooms" },
+  { label: "Mentorship & Incubation", href: "/mentorship" },
+  { label: "Café", href: "/cafe" },
 ];
 
 interface Stat {
@@ -205,8 +215,9 @@ export const testimonials = [
 
 export const footerLinks = {
   explore: [
-    { label: "Events", href: "#events" },
-    { label: "Mentors", href: "#mentors" },
-    { label: "Membership", href: "#membership" },
+    { label: "Events", href: "/#events" },
+    { label: "Mentors", href: "/#mentors" },
+    { label: "Membership", href: "/#membership" },
   ],
+  spaces: serviceLinks,
 };

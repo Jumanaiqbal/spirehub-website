@@ -35,6 +35,12 @@ export default function Header({ onOpenJoinForm }: HeaderProps) {
         </nav>
 
         <div className="hidden items-center gap-4 lg:flex">
+          <a
+            href="/portal/login"
+            className="text-sm font-medium text-gray-600 transition-colors hover:text-spire-navy"
+          >
+            Login
+          </a>
           <Button showArrow onClick={onOpenJoinForm}>Enquire Now</Button>
         </div>
 
@@ -66,7 +72,14 @@ export default function Header({ onOpenJoinForm }: HeaderProps) {
                   {link.label}
                 </a>
               ))}
-              <div className="mt-3 border-t border-gray-100 pt-3">
+              <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
+                <a
+                  href="/portal/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-spire-navy"
+                >
+                  Login
+                </a>
                 <Button className="w-full" onClick={onOpenJoinForm}>
                   Enquire Now
                 </Button>

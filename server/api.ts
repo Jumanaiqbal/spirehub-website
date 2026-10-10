@@ -31,6 +31,8 @@ import { errorMessage, logPayment } from "./paymentLog";
 import { sendWhatsAppTemplate, toBahrainE164 } from "./odoo/whatsapp";
 import { sendAdminBookingEmail, sendCheckoutAlertEmail, sendLeadEmail } from "./odoo/notify";
 import type { OdooEnv } from "./odoo/client";
+import { handlePortalApi } from "./portal/api";
+import { getPortalEnv, sessionFromAuthHeader } from "./portal/auth";
 import { findRoomPricing } from "../src/data/roomPricing";
 import { calculateBookingTotal } from "../src/utils/pricing";
 
@@ -178,6 +180,9 @@ export async function handleOdooApi(
   const odoo = getOdooEnv(env);
 
   try {
+    // Customer portal (login + own invoices/subscription) routes here.
+    if (await handlePortalApi(req, res, path, env, odoo)) return true;
+
     if (path === "/api/health" && req.method === "GET") {
       const health = await testOdooConnection(odoo);
       sendJson(res, 200, health);
@@ -345,7 +350,20 @@ export async function handleOdooApi(
 
       const pricing = findRoomPricing(roomId);
       const hourlyRate = pricing?.hourlyRate ?? 5.5;
-      const amount = calculateBookingTotal(hourlyRate, durationMinutes);
+      let amount = calculateBookingTotal(hourlyRate, durationMinutes);
+
+      // Logged-in members get the workshop room at 50% off (meeting rooms are
+      // free and never reach checkout). Enforced server-side by verifying the
+      // portal token — the discount is never trusted from the client.
+      const memberSession = sessionFromAuthHeader(
+        req.headers.authorization,
+        getPortalEnv(env).secret
+      );
+      const memberDiscount = Boolean(memberSession && pricing?.isWorkshop);
+      if (memberDiscount) {
+        amount = Math.round(amount * 0.5 * 1000) / 1000;
+      }
+
       const merchantTransactionId = `SH${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
       const afs = getAfsEnv(env);
@@ -374,6 +392,7 @@ export async function handleOdooApi(
         amountBhd: amount,
         gateway: afs.baseUrl,
         ip: clientIp(req),
+        memberDiscount,
       });
 
       // Track for abandoned-checkout alerting; cleared when verify runs.
@@ -492,7 +511,19 @@ export async function handleOdooApi(
       const durationMinutes = Number(body.duration ?? 60);
       const pricing = findRoomPricing(roomId);
       const hourlyRate = pricing?.hourlyRate ?? 5.5;
-      const amount = calculateBookingTotal(hourlyRate, durationMinutes);
+      let amount = calculateBookingTotal(hourlyRate, durationMinutes);
+
+      // Apply the SAME member discount used at checkout (workshop 50% off), so
+      // the expected amount matches what AFS actually charged a signed-in
+      // member — otherwise the amount-mismatch guard below would wrongly reject
+      // a member's discounted booking after they'd already paid.
+      const memberSession = sessionFromAuthHeader(
+        req.headers.authorization,
+        getPortalEnv(env).secret
+      );
+      if (memberSession && pricing?.isWorkshop) {
+        amount = Math.round(amount * 0.5 * 1000) / 1000;
+      }
 
       // The booking details are client-supplied, so the price they imply must
       // match what AFS actually charged — otherwise a small payment could be

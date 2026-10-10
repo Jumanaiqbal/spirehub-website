@@ -1,26 +1,34 @@
 # Spire Hub
 
-> Spire Hub is Bahrain's home for ambitious startups — a coworking and startup hub offering coworking space, private offices, meeting and workshop rooms, mentorship, membership plans, and founder events. Located in Manama, Bahrain.
+> Spire Hub is Bahrain's home for ambitious startups — a coworking and startup hub offering coworking space, private offices, meeting and workshop rooms, mentorship, membership plans, and founder events. Located in Seef, Bahrain.
 
 Spire Hub provides:
 - Coworking space and hot desks for founders and startup teams
-- Private offices for growing teams
+- Private offices for growing teams, with optional CR address
 - Bookable meeting rooms and workshop rooms, billed hourly (VAT included)
 - Membership plans for individuals and teams
-- Mentorship from experienced founders and industry leaders
+- Mentorship and incubation support from experienced founders and industry leaders
 - Workshops, founder talks, and networking events
+- A specialty coffee café open to members and walk-in guests
 
 ## Key pages
 
 - [Spire Hub homepage](https://spire.bh/): overview of coworking space, private offices, meeting rooms, membership plans, mentors, and events
-- [Meeting Rooms](https://spire.bh/#rooms): bookable meeting and workshop rooms with hourly pricing
+- [Coworking Space](https://spire.bh/coworking): hot desks, fixed desks, and day passes in Seef, Bahrain
+- [Private Offices](https://spire.bh/private-offices): lockable offices for teams of 1 to 3+, with optional commercial registration address
+- [Meeting Rooms](https://spire.bh/meeting-rooms): bookable meeting and workshop rooms with hourly pricing and card payment
+- [Mentorship & Incubation](https://spire.bh/mentorship): 1:1 mentor sessions and founder workshops
+- [Café](https://spire.bh/cafe): specialty coffee in the Spire Hub workspace
 - [Membership](https://spire.bh/#membership): coworking and private office membership plans
 - [Events](https://spire.bh/#events): upcoming workshops, founder talks, and networking events
-- [Mentors](https://spire.bh/#mentors): founders and industry leaders offering mentorship
 
 ## Contact
 
 - Website: https://spire.bh/
+- Address: Building 2740, Road 3649, Seef, Bahrain
+- Phone: +973 17780888
+- Email: hub@spire.bh
+- Hours: Sunday–Thursday, 9:00–18:00
 - LinkedIn: https://www.linkedin.com/company/injazee/
 - Instagram: https://www.instagram.com/spire.hub/
 - TikTok: https://www.tiktok.com/@spire.hub

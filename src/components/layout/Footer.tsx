@@ -1,5 +1,6 @@
 import Logo from "../ui/Logo";
 import { footerLinks } from "../../data/content";
+import { business, addressLine } from "../../data/business";
 
 const socialLinks = [
   {
@@ -35,13 +36,36 @@ export default function Footer() {
   return (
     <footer className="bg-spire-light">
       <div className="mx-auto max-w-7xl px-6 py-16 lg:px-8">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
             <Logo />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-spire-gray">
               Incubate. Elevate. Lead. Bahrain&apos;s home for ambitious startups
               and visionary founders.
             </p>
+            <address className="mt-6 not-italic text-sm leading-relaxed text-spire-gray">
+              <a
+                href={business.mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-spire-navy"
+              >
+                {addressLine}
+              </a>
+              <br />
+              <a href={business.phoneHref} className="hover:text-spire-navy">
+                {business.phone}
+              </a>
+              <span aria-hidden="true"> · </span>
+              <a
+                href={`mailto:${business.email}`}
+                className="hover:text-spire-navy"
+              >
+                {business.email}
+              </a>
+              <br />
+              <span>Sun–Thu, 9:00–18:00</span>
+            </address>
             <div className="mt-6 flex gap-3">
               {socialLinks.map((social) => (
                 <a
@@ -54,6 +78,22 @@ export default function Footer() {
                 </a>
               ))}
             </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-semibold text-spire-navy">Spaces</h4>
+            <ul className="mt-4 space-y-3">
+              {footerLinks.spaces.map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="text-sm text-spire-gray transition-colors hover:text-spire-navy"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div>

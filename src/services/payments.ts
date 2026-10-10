@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from "./fetchWithTimeout";
+import { getToken } from "./portal";
 import type { MeetingRoom } from "../data/meetingRooms";
 
 export interface CheckoutResult {
@@ -22,9 +23,15 @@ export async function createCheckout(params: {
   time?: string;
   layout?: string;
 }): Promise<CheckoutResult> {
+  // Send the member token if signed in, so the server can apply the workshop
+  // 50% member discount (server-verified — never trusted from the client).
+  const token = getToken();
   const response = await fetchWithTimeout("/api/payments/checkout", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({
       roomId: Number(params.roomId),
       durationMinutes: params.durationMinutes,
@@ -70,11 +77,18 @@ export async function verifyPayment(
   resourcePath: string,
   pending: PendingBooking
 ): Promise<VerifyPaymentResult> {
+  // Send the member token (if signed in) so the server applies the same
+  // workshop discount when re-checking the charged amount — otherwise a
+  // member's discounted payment would fail the amount check.
+  const token = getToken();
   const response = await fetchWithTimeout(
     "/api/payments/verify",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({
         resourcePath,
         roomId: Number(pending.room.odooId ?? pending.room.id),

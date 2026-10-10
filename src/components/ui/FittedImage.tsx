@@ -19,11 +19,13 @@ export default function FittedImage({ src, alt, className = "", children }: Fitt
         src={src}
         alt=""
         aria-hidden="true"
+        loading="lazy"
         className="absolute inset-0 h-full w-full scale-110 object-cover opacity-50 blur-lg"
       />
       <img
         src={src}
         alt={alt}
+        loading="lazy"
         className="relative h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
       />
       {children}

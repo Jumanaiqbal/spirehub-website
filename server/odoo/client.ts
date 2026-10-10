@@ -78,6 +78,25 @@ async function jsonRpc<T>(
   return data.result as T;
 }
 
+/**
+ * Validate an arbitrary user's login + password against Odoo (used for the
+ * customer portal — customers sign in with their own Odoo portal credentials).
+ * Returns their uid, or null if the credentials are wrong. Never cached.
+ */
+export async function authenticateUser(
+  odoo: OdooEnv,
+  login: string,
+  password: string
+): Promise<number | null> {
+  const uid = await jsonRpc<number | false>(
+    odoo,
+    "common",
+    "authenticate",
+    [odoo.db, login, password, {}]
+  );
+  return uid || null;
+}
+
 export async function authenticate(odoo: OdooEnv): Promise<number> {
   if (cachedUid) return cachedUid;
 

@@ -43,7 +43,9 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
   // Open immediately (during render, before child effects run) when AFS
   // redirects back from the card payment page.
   const [modalOpen, setModalOpen] = useState(
-    () => new URLSearchParams(window.location.search).get("afsPayment") === "1"
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("afsPayment") === "1"
   );
   const [preselectedRoom, setPreselectedRoom] = useState<string | null>(null);
   const [rooms, setRooms] = useState<MeetingRoom[]>(fallbackRooms);
@@ -147,6 +149,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
               <img
                 src={POPULAR_IMAGE}
                 alt="Popular room at Spire Hub"
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute bottom-3 left-3">
@@ -172,6 +175,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
             <img
               src={HERO_IMAGE}
               alt="Spire Hub meeting room"
+              loading="lazy"
               className="absolute inset-0 h-full w-full object-cover"
             />
 
@@ -235,6 +239,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
               <img
                 src={workshopRoom.image}
                 alt={workshopRoom.name}
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <span className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-spire-navy backdrop-blur-sm">
@@ -277,6 +282,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
                             <img
                               src={layout.image}
                               alt={layout.label}
+                              loading="lazy"
                               className="h-20 w-full object-cover sm:h-24"
                             />
                           )}
@@ -369,6 +375,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
                 <img
                   src={featuredRoom.image}
                   alt={featuredRoom.name}
+                  loading="lazy"
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
@@ -421,6 +428,7 @@ export default function MeetingRooms({ onOpenJoinForm }: MeetingRoomsProps) {
                 <img
                   src={room.image}
                   alt={room.name}
+                  loading="lazy"
                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/10" />
